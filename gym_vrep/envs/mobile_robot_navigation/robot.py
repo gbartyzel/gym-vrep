@@ -3,7 +3,7 @@ import numpy as np
 from gym_vrep.envs.vrep import vrep
 
 
-class Base(object):
+class Robot(object):
     wheel_diameter = 0.06
     body_width = 0.156
     velocity_bound = np.array([0.0, 10.0])
@@ -19,6 +19,11 @@ class Base(object):
 
         self._client = client
 
+        self._proximity_reading = 2 * np.ones(5)
+        self._encoder_reading = np.zeros(2)
+        self._gyroscope_reading = np.zeros(3)
+        self._accelerometer_reading = np.zeros(3)
+
     def reset(self):
         self._objects_hanlders = dict()
         self._delta_phi = np.zeros(2)
@@ -29,7 +34,7 @@ class Base(object):
             self._objects_hanlders[key] = temp
 
         for key, stream in self._stream_names.items():
-            vrep.simxReadStringStream(self._client, stream,
+            vrep.simxGetStringSignal(self._client, stream,
                                       vrep.simx_opmode_streaming)
 
         vrep.simxGetObjectPosition(self._client,
@@ -58,22 +63,43 @@ class Base(object):
             velocities[1], vrep.simx_opmode_oneshot)
 
     def get_encoders_rotations(self):
-        _, packed_vec = vrep.simxReadStringStream(
+        res, packed_vec = vrep.simxGetStringSignal(
             self._client, self._stream_names['encoders'],
             vrep.simx_opmode_buffer)
 
-        data = vrep.simxUnpackFloats(packed_vec)
+        if res == vrep.simx_return_ok:
+            self._encoder_reading = vrep.simxUnpackFloats(packed_vec)
 
-        return np.round(data, 3)
+        return np.round(self._encoder_reading, 3)
 
     def get_proximity_values(self):
-        _, packed_vec = vrep.simxReadStringStream(
+        res, packed_vec = vrep.simxGetStringSignal(
             self._client, self._stream_names['proximity_sensor'],
             vrep.simx_opmode_buffer)
 
-        data = vrep.simxUnpackFloats(packed_vec)[0:5]
+        if res == vrep.simx_return_ok:
+            self._proximity_reading = vrep.simxUnpackFloats(packed_vec)
 
-        return np.round(data, 3)
+        return np.round(self._proximity_reading, 3)
+
+    def get_accelerometer_values(self):
+        res, packed_vec = vrep.simxGetStringSignal(
+            self._client, self._stream_names['accelerometer'],
+            vrep.simx_opmode_buffer)
+
+        if res == vrep.simx_return_ok:
+            self._accelerometer_reading = vrep.simxUnpackFloats(packed_vec)
+
+        return np.asarray(self._accelerometer_reading)
+
+    def get_gyroscope_values(self):
+        res, packed_vec = vrep.simxGetStringSignal(
+            self._client, self._stream_names['gyroscope'],
+            vrep.simx_opmode_buffer)
+
+        if res == vrep.simx_return_ok:
+            self._gyroscope_reading = vrep.simxUnpackFloats(packed_vec)
+        return np.asarray(self._gyroscope_reading)
 
     def get_velocities(self):
         wheels_velocities = self._delta_phi / self._dt
