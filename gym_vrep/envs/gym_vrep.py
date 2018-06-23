@@ -9,13 +9,13 @@ from gym_vrep.envs.vrep import vrep
 
 
 def run_env(port, scene):
-    vrep_exec = os.environ['V_REP'] + 'vrep.sh '
+    vrep_exec = os.environ['V_REP'] + 'vrep.sh -h '
     synch_mode_cmd = '-gREMOTEAPISERVERSERVICE_' + str(port) + '_FALSE_TRUE '
     fullpath = os.path.join(
         os.path.dirname(__file__), 'scenes', scene + '.ttt')
 
     subprocess.call(vrep_exec + synch_mode_cmd + fullpath + ' &', shell=True)
-    time.sleep(5.5)
+    time.sleep(0.5)
 
     client = vrep.simxStart('127.0.0.1', port, True, True, 5000, 5)
     vrep.simxSynchronous(client, True)
