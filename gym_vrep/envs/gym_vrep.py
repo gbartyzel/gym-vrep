@@ -27,7 +27,7 @@ class VrepEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self, scene, dt):
-        self.seed(1337)
+        self.seed()
 
         self._dt = dt
         self._port = self.np_random.randint(20000, 21000)
