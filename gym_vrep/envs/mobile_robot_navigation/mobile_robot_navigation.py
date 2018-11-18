@@ -68,7 +68,7 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         if self.enable_vision:
             self.observation_space = spaces.Dict(dict(
                 image=spaces.Box(
-                    low=0, high=255, shape=(256, 256, 3), dtype=np.uint8),
+                    low=0, high=255, shape=(640, 480, 3), dtype=np.uint8),
                 scalars=spaces.Box(
                     -np.inf, np.inf, shape=(2, ), dtype=np.float32),
             ))
