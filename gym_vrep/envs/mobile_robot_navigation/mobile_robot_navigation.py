@@ -51,7 +51,6 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         self._alpha_factor = 25
         self._goal_threshold = 0.02
         self._collision_dist = 0.04
-        self._env_steps = 0
 
         self._robot = Robot(self._client, self._dt, v_rep_obj_names,
                             v_rep_stream_names)
@@ -122,7 +121,6 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         self._robot.reset()
         vrep.simxStartSimulation(self._client, vrep.simx_opmode_oneshot_wait)
 
-        self._env_steps = 0
         for _ in range(2):
             vrep.simxSynchronousTrigger(self._client)
             vrep.simxGetPingTime(self._client)
