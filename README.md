@@ -1,31 +1,29 @@
-# Open-AI Gym extension for robotics based on V-REP
+## Open-AI Gym extension for robotics based on V-REP
 
-## Environments
+### Environments
 
-1. Mobile robot navigation:
-* description: Mobile robot is a learning agent. It contains five proximity 
-sensors, IMU and two DC motors. The task of this agent is to navigate from 
-position A to position B.
-* variants:
-    * ideal - position is obtained from simulation engine
-    * odometry - position is obtained from encoders ticks
-    * gyrodometry - position is obtained from gyroscope and encoders ticks
+1. Mobile robot navigation - the mobile robot contains five proximity sensors,
+IMU and two DC motors. The task of this agent is to navigate from position A to position B.
+Four variants of this problem were implemented:
+
+| Environment                      | Description                                                                                         |
+| -------------------------------- | --------------------------------------------------------------------------------------------------- |
+| MobileRobotIdealNavigation       | Position is obtained from simulation engine. Collision is detected with proximity sensor            |
+| MobileRobotVisualIdealNavigation | Position is obtained from simulation engine. Collision is detected with camera sensor               |
+| MobileRobotOdometryNavigation    | Position is obtained from encoders ticks. Collision is detected with proximity sensor               |
+| MobileRobotGyrodometryNavigation | Position is obtained from encoders ticks and gyroscope. Collision is detected with proximity sensor |
+
+| Classic env: | Visual env: |
+|:-----------:| ----------- |
+| * reading from 5 proximity sensor |
 * state:
     * classic env:
         * reading from 5 proximity sensors
         * polar coordinates
-    * goal based env:
-        * observation:
-            * reading from 5 proximity sensors
-            * robot cartesian position
-        * achieved goal:
-            * robot cartesian position
-        * desired goal:
-            * goal cartesian position
     
-## Installation
+### Installation
 
-### Requirements:
+#### Requirements:
 Basic requirements:
 * V-REP 3.5.0
 * Python 3.5+
@@ -33,16 +31,12 @@ Basic requirements:
 * OpenAI gym
 
 
-### V-REP
+#### V-REP
 ```
-cd ~
-wget http://coppeliarobotics.com/files/V-REP_PRO_EDU_V3_5_0_Linux.tar.gz
-tar -xzvf V-REP_PRO_EDU_V3_5_0_Linux 
-sudo mv V-REP_PRO_EDU_V3_5_0_Linux /opt/V-REP
-rm -rf V-REP_PRO_EDU_V3_5_0_Linux
-export V_REP=/opt/V-REP
+chmod +x ./install_vrep.sh
+./install_vrep.sh
 ```
-### Python
+#### Python
 ```
 git clone https://github.com/Souphis/gym-vrep.git
 cd gym-vrep

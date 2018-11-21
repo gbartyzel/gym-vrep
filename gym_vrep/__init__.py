@@ -33,11 +33,3 @@ register(
     max_episode_steps=1200,
     kwargs={'dt': 0.05},
 )
-
-register(
-    id='MobileRobotNavigationGoal-v0',
-    entry_point=
-    'gym_vrep.envs.mobile_robot_navigation:MobileRobotNavigationGoalEnv',
-    max_episode_steps=1200,
-    kwargs={'dt': 0.05},
-)
