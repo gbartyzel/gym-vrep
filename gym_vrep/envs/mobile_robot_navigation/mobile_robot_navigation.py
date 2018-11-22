@@ -65,16 +65,19 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
             shape=self._robot.velocity_bound.shape,
             dtype='float32')
 
+        env_diagonal = np.sqrt(2.0 * (5.0 ** 2))
+
+        low = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -np.pi])
+        high = np.array([2.0, 2.0, 2.0, 2.0, 2.0, env_diagonal, np.pi])
         if self.enable_vision:
             self.observation_space = spaces.Dict(dict(
                 image=spaces.Box(
                     low=0, high=255, shape=(640, 480, 3), dtype=np.uint8),
-                scalars=spaces.Box(
-                    -np.inf, np.inf, shape=(2, ), dtype=np.float32),
+                scalars=spaces.Box(low=low, high=high, dtype=np.float32),
             ))
         else:
             self.observation_space = spaces.Box(
-                low=-np.inf, high=np.inf, shape=(7, ), dtype=np.float32)
+                low=low, high=high, dtype=np.float32)
 
     def step(self, action):
         self._robot.set_motor_velocities(action)
