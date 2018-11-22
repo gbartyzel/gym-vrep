@@ -35,7 +35,12 @@ class Robot(object):
 
         for key, stream in self._stream_names.items():
             vrep.simxGetStringSignal(self._client, stream,
-                                      vrep.simx_opmode_streaming)
+                                     vrep.simx_opmode_streaming)
+
+        if 'camera' in self._objects_hanlders:
+            vrep.simxGetVisionSensorImage(self._client,
+                                          self._objects_hanlders['camera'],
+                                          False, vrep.simx_opmode_streaming)
 
         vrep.simxGetObjectPosition(self._client,
                                    self._objects_hanlders['robot'], -1,
@@ -71,6 +76,14 @@ class Robot(object):
             self._encoder_reading = vrep.simxUnpackFloats(packed_vec)
 
         return np.round(self._encoder_reading, 3)
+
+    def get_image(self):
+        res, resolution, image = vrep.simxGetVisionSensorImage(
+            self._client, self._objects_hanlders['camera'], False,
+            vrep.simx_opmode_buffer)
+        img = np.array(image, dtype=np.uint8)
+        img.resize([resolution[1], resolution[0], 3])
+        return img
 
     def get_proximity_values(self):
         res, packed_vec = vrep.simxGetStringSignal(

@@ -3,33 +3,33 @@ from gym.envs.registration import register
 
 logger = logging.getLogger(__name__)
 register(
-    id='VrepMobileRobotIdealNavigation-v0',
+    id='MobileRobotIdealNavigation-v0',
     entry_point=
-    'gym_vrep.envs.mobile_robot_navigation:VrepMobileRobotNavigationEnv',
+    'gym_vrep.envs.mobile_robot_navigation:MobileRobotNavigationEnv',
     max_episode_steps=1200,
     kwargs={'dt': 0.05},
 )
 
 register(
-    id='VrepMobileRobotOdometryNavigation-v0',
+    id='MobileRobotVisionIdealNavigation-v0',
     entry_point=
-    'gym_vrep.envs.mobile_robot_navigation:VrepMobileRobotOdomNavigationEnv',
+    'gym_vrep.envs.mobile_robot_navigation:MobileRobotVisionNavigationEnv',
     max_episode_steps=1200,
     kwargs={'dt': 0.05},
 )
 
 register(
-    id='VrepMobileRobotGyrodometryNavigation-v0',
+    id='MobileRobotOdometryNavigation-v0',
     entry_point=
-    'gym_vrep.envs.mobile_robot_navigation:VrepMobileRobotGyroNavigationEnv',
+    'gym_vrep.envs.mobile_robot_navigation:MobileRobotOdomNavigationEnv',
     max_episode_steps=1200,
     kwargs={'dt': 0.05},
 )
 
 register(
-    id='VrepMobileRobotNavigationGoal-v0',
+    id='MobileRobotGyrodometryNavigation-v0',
     entry_point=
-    'gym_vrep.envs.mobile_robot_navigation:VrepMobileRobotNavigationGoalEnv',
+    'gym_vrep.envs.mobile_robot_navigation:MobileRobotGyroNavigationEnv',
     max_episode_steps=1200,
     kwargs={'dt': 0.05},
 )
