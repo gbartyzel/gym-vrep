@@ -13,13 +13,13 @@ Four variants of this problem were implemented:
 | MobileRobotOdometryNavigation    | Position is obtained from encoders ticks. Collision is detected with proximity sensor               |
 | MobileRobotGyrodometryNavigation | Position is obtained from encoders ticks and gyroscope. Collision is detected with proximity sensor |
 
-| Classic env: | Visual env: |
-|:-----------:| ----------- |
-| * reading from 5 proximity sensor |
-* state:
-    * classic env:
-        * reading from 5 proximity sensors
-        * polar coordinates
+Environment state description:
+
+| Classic env:                       | Visual env:                        |
+| ---------------------------------- | ---------------------------------- |
+| distances from 5 proximity sensors | distances from 5 proximity sensors |
+| polar coordinates                  | polar coordinates                  |
+|                                    | image from camera sensor           |
     
 ### Installation
 
