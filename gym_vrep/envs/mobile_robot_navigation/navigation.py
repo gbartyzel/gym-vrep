@@ -41,22 +41,19 @@ class Base(object):
 
 class Ideal(Base):
     def __init__(self, target_position, wheel_diameter, robot_width, dt):
-        super(Ideal, self).__init__(target_position, wheel_diameter,
-                                    robot_width, dt)
+        super(Ideal, self).__init__(target_position, wheel_diameter, robot_width, dt)
 
     def compute_position(self, **kwargs):
         position = np.round(kwargs['position'], 3)
         position[2] = self._angle_correction(position[2])
-        self._polar_coordinates[0] = np.linalg.norm(
-            position[0:2] - self._target_position)
+        self._polar_coordinates[0] = np.linalg.norm(position[0:2] - self._target_position)
 
         theta = np.arctan2(self._target_position[1] - position[1],
                            self._target_position[0] - position[0])
 
         theta = self._angle_correction(theta)
 
-        self._polar_coordinates[1] = self._angle_correction(
-            theta - position[2])
+        self._polar_coordinates[1] = self._angle_correction(theta - position[2])
 
     def reset(self, start_pose):
         self._polar_coordinates = np.zeros(2)
@@ -65,8 +62,7 @@ class Ideal(Base):
 
 class Odometry(Base):
     def __init__(self, target_position, wheel_diameter, robot_width, dt):
-        super(Odometry, self).__init__(target_position, wheel_diameter,
-                                       robot_width, dt)
+        super(Odometry, self).__init__(target_position, wheel_diameter, robot_width, dt)
 
         self._sum_path = 0.0
 
@@ -85,16 +81,14 @@ class Odometry(Base):
         self._pose = np.round(self._pose, 3)
         self._pose[2] = self._angle_correction(self._pose[2])
 
-        self._polar_coordinates[0] = np.linalg.norm(
-            self._pose[0:2] - self._target_position)
+        self._polar_coordinates[0] = np.linalg.norm(self._pose[0:2] - self._target_position)
 
         theta = np.arctan2(self._target_position[1] - self._pose[1],
                            self._target_position[0] - self._pose[0])
 
         theta = self._angle_correction(theta)
 
-        self._polar_coordinates[1] = self._angle_correction(
-            theta - self._pose[2])
+        self._polar_coordinates[1] = self._angle_correction(theta - self._pose[2])
 
     def compute_delta_motion(self, phi):
         wheels_paths = phi * self._wheel_radius
@@ -140,16 +134,14 @@ class Gyrodometry(Base):
         self._pose = np.round(self._pose, 3)
         self._pose[2] = self._angle_correction(self._pose[2])
 
-        self._polar_coordinates[0] = np.linalg.norm(
-            self._pose[0:2] - self._target_position)
+        self._polar_coordinates[0] = np.linalg.norm(self._pose[0:2] - self._target_position)
 
         theta = np.arctan2(self._target_position[1] - self._pose[1],
                            self._target_position[0] - self._pose[0])
 
         theta = self._angle_correction(theta)
 
-        self._polar_coordinates[1] = self._angle_correction(
-            theta - self._pose[2])
+        self._polar_coordinates[1] = self._angle_correction(theta - self._pose[2])
 
     def compute_delta_motion(self, phi):
         wheels_paths = phi * self._wheel_radius
