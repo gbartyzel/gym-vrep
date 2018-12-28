@@ -21,6 +21,7 @@ GOAL_LIST = np.array([
     [0.0, 0.0]
 ])
 
+
 def _choose_world_type(enable_vision):
     if enable_vision:
         return 'mobile_robot_navigation_room_vision'
@@ -51,11 +52,9 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         }
 
         self._goal = self._goal_generator()
-        self._goal_threshold = 0.02
-        self._collision_dist = 0.04
+        self._goal_threshold = 0.05
+        self._collision_dist = 0.05
         self._env_diagonal = np.sqrt(2.0 * (5.0 ** 2))
-        self._step = 0
-        self._max_episode_steps = 1200
         self._prev_distance = 0.0
 
         self._robot = Robot(self._client, self._dt, v_rep_obj_names, v_rep_stream_names)
@@ -83,36 +82,29 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
             self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
 
     def step(self, action):
-        self._step += 1
         self._robot.set_motor_velocities(action)
         vrep.simxSynchronousTrigger(self._client)
-        vrep.simxGetPingTime(self._client)
 
         state = self._get_observation()
 
         reward, done, info = self._compute_reward(state)
 
-        if done:
-            vrep.simxStopSimulation(self._client, vrep.simx_opmode_oneshot_wait)
-
-        if self._step == self._max_episode_steps:
-            done = True
-
         return state, reward, done, info
 
     def reset(self):
-        self._step = 0
         self._goal = self._goal_generator()
+        print('Current goal: {}'.format(self._goal))
 
-        vrep.simxStopSimulation(self._client, vrep.simx_opmode_oneshot_wait)
+        vrep.simxStopSimulation(self._client, vrep.simx_opmode_blocking)
         self._robot.reset()
-        vrep.simxStartSimulation(self._client, vrep.simx_opmode_oneshot_wait)
+        vrep.simxStartSimulation(self._client, vrep.simx_opmode_blocking)
 
         for _ in range(2):
             vrep.simxSynchronousTrigger(self._client)
             vrep.simxGetPingTime(self._client)
 
         state = self._get_observation()
+        self._prev_distance = state[5]
 
         return state
 
@@ -120,7 +112,7 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         done = False
         info = {'is_success': False}
 
-        reward = state[7] * (-1.0) ** (self._prev_distance - state[5] < 0)
+        reward = state[7] * (-1.0) ** ((state[5] - self._prev_distance) > 0)
 
         if not np.all(state[0:5] > self._collision_dist):
             reward = -1.0
@@ -146,7 +138,6 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         self._navigation.compute_position(
             position=cartesian_pose, phi=delta_phi, anuglar_velocity=gyroscope_angular_velocity[2])
         polar_coordinates = self._navigation.polar_coordinates
-        self._prev_distance = polar_coordinates[0]
 
         state = np.concatenate((proximity_sensor_distance, polar_coordinates, velocities))
 
@@ -174,7 +165,9 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
 
     @staticmethod
     def _goal_generator():
-        return np.take(GOAL_LIST, np.random.randint(GOAL_LIST.shape[0]), axis=0)
+        goal = np.take(GOAL_LIST, np.random.randint(GOAL_LIST.shape[0]), axis=0)
+        noise = np.random.uniform(-0.05, 0.05, (2,))
+        return np.round(goal + noise, 2)
 
 
 class MobileRobotOdomNavigationEnv(MobileRobotNavigationEnv):
