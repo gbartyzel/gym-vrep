@@ -2,17 +2,14 @@ import numpy as np
 
 
 class Base(object):
-    def __init__(self, target_position, wheel_diameter, robot_width, dt):
-        self._target_position = np.asarray(target_position)
+    def __init__(self, wheel_diameter, robot_width, dt):
+        self._target_position = None
         self._wheel_radius = wheel_diameter / 2.0
         self._body_width = robot_width
         self._dt = dt
 
         self._pose = np.zeros(3)
         self._polar_coordinates = np.zeros(2)
-
-    def set_target_position(self, target_position):
-        self._target_position = np.asarray(target_position)
 
     @property
     def pose(self):
@@ -25,7 +22,7 @@ class Base(object):
     def compute_position(self, **kwargs):
         return NotImplementedError
 
-    def reset(self, start_pose):
+    def reset(self, start_pose, target_position):
         return NotImplementedError
 
     @staticmethod
@@ -40,8 +37,8 @@ class Base(object):
 
 
 class Ideal(Base):
-    def __init__(self, target_position, wheel_diameter, robot_width, dt):
-        super(Ideal, self).__init__(target_position, wheel_diameter, robot_width, dt)
+    def __init__(self, wheel_diameter, robot_width, dt):
+        super(Ideal, self).__init__(wheel_diameter, robot_width, dt)
 
     def compute_position(self, **kwargs):
         position = np.round(kwargs['position'], 3)
@@ -55,14 +52,15 @@ class Ideal(Base):
 
         self._polar_coordinates[1] = self._angle_correction(theta - position[2])
 
-    def reset(self, start_pose):
+    def reset(self, start_pose, target_position):
+        self._target_position = target_position
         self._polar_coordinates = np.zeros(2)
         self._pose = start_pose
 
 
 class Odometry(Base):
-    def __init__(self, target_position, wheel_diameter, robot_width, dt):
-        super(Odometry, self).__init__(target_position, wheel_diameter, robot_width, dt)
+    def __init__(self, wheel_diameter, robot_width, dt):
+        super(Odometry, self).__init__(wheel_diameter, robot_width, dt)
 
         self._sum_path = 0.0
 
@@ -101,7 +99,8 @@ class Odometry(Base):
 
         return delta_path, delta_beta
 
-    def reset(self, start_pose):
+    def reset(self, start_pose, target_position):
+        self._target_position = target_position
         self._polar_coordinates = np.zeros(2)
         self._pose = start_pose
 
@@ -109,9 +108,8 @@ class Odometry(Base):
 
 
 class Gyrodometry(Base):
-    def __init__(self, target_position, wheel_diameter, robot_width, dt):
-        super(Gyrodometry, self).__init__(target_position, wheel_diameter,
-                                          robot_width, dt)
+    def __init__(self, wheel_diameter, robot_width, dt):
+        super(Gyrodometry, self).__init__(wheel_diameter, robot_width, dt)
 
         self._sum_path = 0.0
 
@@ -157,7 +155,8 @@ class Gyrodometry(Base):
 
         return delta_beta
 
-    def reset(self, start_pose):
+    def reset(self, start_pose, target_position):
+        self._target_position = target_position
         self._pose = start_pose
         self._polar_coordinates = np.zeros(2)
 

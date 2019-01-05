@@ -15,7 +15,7 @@ class Robot(object):
 
         self._stream_names = stream_names
         self._dt = dt
-        self._objects_hanlders = dict()
+        self._object_handlers = dict()
 
         self._client = client
 
@@ -25,7 +25,7 @@ class Robot(object):
         self._accelerometer_reading = np.zeros(3)
 
     def reset(self):
-        self._objects_hanlders = dict()
+        self._object_handlers = dict()
         self._proximity_reading = 2 * np.ones(5)
         self._encoder_reading = np.zeros(2)
         self._gyroscope_reading = np.zeros(3)
@@ -33,28 +33,28 @@ class Robot(object):
 
         for key, name in self._object_names.items():
             res, temp = vrep.simxGetObjectHandle(self._client, name, vrep.simx_opmode_oneshot_wait)
-            self._objects_hanlders[key] = temp
+            self._object_handlers[key] = temp
 
         for key, stream in self._stream_names.items():
             vrep.simxGetStringSignal(self._client, stream, vrep.simx_opmode_streaming)
 
-        if 'camera' in self._objects_hanlders:
+        if 'camera' in self._object_handlers:
             vrep.simxGetVisionSensorImage(
-                self._client, self._objects_hanlders['camera'], False, vrep.simx_opmode_streaming)
+                self._client, self._object_handlers['camera'], False, vrep.simx_opmode_streaming)
 
         vrep.simxGetObjectPosition(
-            self._client, self._objects_hanlders['robot'], -1, vrep.simx_opmode_streaming)
+            self._client, self._object_handlers['robot'], -1, vrep.simx_opmode_streaming)
 
         vrep.simxGetObjectOrientation(
-            self._client, self._objects_hanlders['robot'], -1, vrep.simx_opmode_streaming)
+            self._client, self._object_handlers['robot'], -1, vrep.simx_opmode_streaming)
 
     def set_motor_velocities(self, velocities):
         velocities = np.clip(velocities, self.velocity_bound[0], self.velocity_bound[1])
 
-        vrep.simxSetJointTargetVelocity(self._client, self._objects_hanlders['left_motor'],
+        vrep.simxSetJointTargetVelocity(self._client, self._object_handlers['left_motor'],
                                         velocities[0], vrep.simx_opmode_oneshot)
 
-        vrep.simxSetJointTargetVelocity(self._client, self._objects_hanlders['right_motor'],
+        vrep.simxSetJointTargetVelocity(self._client, self._object_handlers['right_motor'],
                                         velocities[1], vrep.simx_opmode_oneshot)
 
     def get_encoders_rotations(self):
@@ -69,7 +69,7 @@ class Robot(object):
 
     def get_image(self):
         res, resolution, image = vrep.simxGetVisionSensorImage(
-            self._client, self._objects_hanlders['camera'], False, vrep.simx_opmode_buffer)
+            self._client, self._object_handlers['camera'], False, vrep.simx_opmode_buffer)
         img = np.array(image, dtype=np.uint8)
         img.resize([resolution[1], resolution[0], 3])
         return img
@@ -112,10 +112,10 @@ class Robot(object):
 
     def get_position(self):
         _, pos = vrep.simxGetObjectPosition(
-            self._client, self._objects_hanlders['robot'], -1, vrep.simx_opmode_buffer)
+            self._client, self._object_handlers['robot'], -1, vrep.simx_opmode_buffer)
 
         _, rot = vrep.simxGetObjectOrientation(
-            self._client, self._objects_hanlders['robot'], -1, vrep.simx_opmode_buffer)
+            self._client, self._object_handlers['robot'], -1, vrep.simx_opmode_buffer)
 
         return np.round(pos[0:2] + [rot[2]], 3)
 
