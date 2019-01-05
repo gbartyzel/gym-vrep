@@ -23,6 +23,7 @@ class VrepEnv(gym.Env):
         self._set_floatparam(vrep.sim_floatparam_simulation_time_step, dt)
 
         self._load_environment(scene)
+        self._spawn_robot()
         if not self._get_boolparam(vrep.sim_boolparam_headless):
             self._clear_gui()
 
@@ -50,26 +51,15 @@ class VrepEnv(gym.Env):
         self._set_boolparam(vrep.sim_boolparam_browser_visible, False)
         self._set_boolparam(vrep.sim_boolparam_threaded_rendering_enabled, True)
 
-    def _spawn_robot(self, object_name, start_pose):
+    def _spawn_robot(self):
         model_path = os.path.join(self._assets_path, 'models', self._model + '.ttm')
-
-        res, object_handle = vrep.simxGetObjectHandle(
-            self._client, object_name, vrep.simx_opmode_oneshot_wait)
-
-        if res == vrep.simx_return_ok:
-            vrep.simxRemoveModel(self._client, object_handle, vrep.simx_opmode_blocking)
-
         vrep.simxLoadModel(self._client, model_path, 1, vrep.simx_opmode_blocking)
-        res, object_handle = vrep.simxGetObjectHandle(
-            self._client, object_name, vrep.simx_opmode_oneshot_wait)
 
-        self._set_start_pose(object_handle, start_pose['position'], start_pose['orientation'])
-
-    def _set_start_pose(self, object_handle, position, orientation):
+    def _set_start_pose(self, object_handle, pose):
         vrep.simxSetObjectPosition(
-            self._client, object_handle, -1, position, vrep.simx_opmode_blocking)
+            self._client, object_handle, -1, pose['position'], vrep.simx_opmode_blocking)
         vrep.simxSetObjectOrientation(
-            self._client, object_handle, -1, orientation, vrep.simx_opmode_blocking)
+            self._client, object_handle, -1, pose['orientation'], vrep.simx_opmode_blocking)
 
     def _set_boolparam(self, parameter, value):
         vrep.simxSetBooleanParameter(self._client, parameter, value, vrep.simx_opmode_oneshot)

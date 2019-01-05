@@ -104,8 +104,8 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         print('Current goal: {}'.format(self._goal))
 
         vrep.simxStopSimulation(self._client, vrep.simx_opmode_blocking)
-        self._spawn_robot(self._robot._object_names['robot'], start_pose)
         self._robot.reset()
+        self._set_start_pose(self._robot._object_handlers['robot'], start_pose)
         self._navigation.reset(start_pose, self._goal)
         vrep.simxStartSimulation(self._client, vrep.simx_opmode_blocking)
 
