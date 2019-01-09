@@ -19,7 +19,10 @@ Environment state description:
 | ---------------------------------- | ---------------------------------- |
 | distances from 5 proximity sensors | distances from 5 proximity sensors |
 | polar coordinates                  | polar coordinates                  |
-|                                    | image from camera sensor           |
+| linear and angular velocities      | image from camera sensor           |
+|                                    | linear and angular velocities      |
+
+
     
 ### Installation
 

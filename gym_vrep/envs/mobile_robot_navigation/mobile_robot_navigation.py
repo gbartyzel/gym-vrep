@@ -60,26 +60,24 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         }
 
         self._goal = None
-
         self._goal_threshold = 0.05
         self._collision_dist = 0.05
-        self._env_diagonal = np.sqrt(2.0 * (5.0 ** 2))
         self._prev_distance = 0.0
+        self._reward_factor = 20
 
         self._robot = Robot(self._client, self._dt, v_rep_obj_names, v_rep_stream_names)
         self._navigation = self.navigation_type(
             self._robot.wheel_diameter, self._robot.body_width, self._dt)
 
         radius = self._robot.wheel_diameter / 2.0
-        self._max_linear_vel = radius * 2 * self._robot.velocity_bound[1] / 2
-        self._max_angular_vel = (
-                radius / self._robot.body_width * np.diff(self._robot.velocity_bound))
+        max_linear_vel = radius * 2 * self._robot.velocity_bound[1] / 2
+        max_angular_vel = radius / self._robot.body_width * np.diff(self._robot.velocity_bound)
 
         self.action_space = spaces.Box(self._robot.velocity_bound[0], self._robot.velocity_bound[1],
                                        shape=self._robot.velocity_bound.shape, dtype='float32')
 
-        low = self._get_observation_low()
-        high = self._get_observation_high()
+        low = self._get_observation_low(max_angular_vel)
+        high = self._get_observation_high(max_linear_vel, max_angular_vel)
 
         if self.enable_vision:
             self.observation_space = spaces.Dict(dict(
@@ -122,9 +120,9 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         done = False
         info = {'is_success': False}
 
-        reward = state[7] * (-1.0) ** ((state[5] - self._prev_distance) > 0)
+        reward = (self._prev_distance - state[5]) * self._reward_factor
 
-        if not np.all(state[0:5] > self._collision_dist):
+        if (state[0:5] < self._collision_dist).any():
             reward = -1.0
             done = True
 
@@ -155,19 +153,20 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
 
         return state
 
-    def _get_observation_low(self):
+    def _get_observation_low(self, max_angular_vel):
         proximity_sensor = (
                 np.ones(self._robot.nb_proximity_sensor) * self._robot.proximity_sensor_bound[0])
         polar_coordinates = np.array([0.0, -np.pi])
-        velocities = np.array([0.0, -self._max_angular_vel])
+        velocities = np.array([0.0, -max_angular_vel])
 
         return np.concatenate((proximity_sensor, polar_coordinates, velocities))
 
-    def _get_observation_high(self):
+    def _get_observation_high(self, max_linear_vel, max_angular_vel):
+        env_diagonal = np.sqrt(2.0 * (5.0 ** 2))
         proximity_sensor = (
                 np.ones(self._robot.nb_proximity_sensor) * self._robot.proximity_sensor_bound[1])
-        polar_coordinatesh = np.array([self._env_diagonal, np.pi])
-        velocities = np.array([self._max_linear_vel, self._max_angular_vel])
+        polar_coordinatesh = np.array([env_diagonal, np.pi])
+        velocities = np.array([max_linear_vel, max_angular_vel])
 
         return np.concatenate((proximity_sensor, polar_coordinatesh, velocities))
 
