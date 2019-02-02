@@ -1,5 +1,6 @@
 import numpy as np
 
+from typing import List, Dict, NoReturn
 from gym_vrep.envs.vrep import vrep
 
 
@@ -10,7 +11,8 @@ class Robot(object):
     velocity_bound = np.array([0.0, 10.0])
     proximity_sensor_bound = np.array([0.02, 2.0])
 
-    def __init__(self, client, dt, objects_names, stream_names):
+    def __init__(self, client: int, dt: float, objects_names: Dict[str, str],
+                 stream_names: Dict[str, str]):
         self._object_names = objects_names
 
         self._stream_names = stream_names
@@ -24,7 +26,7 @@ class Robot(object):
         self._gyroscope_reading = np.zeros(3)
         self._accelerometer_reading = np.zeros(3)
 
-    def reset(self):
+    def reset(self) -> NoReturn:
         self._object_handlers = dict()
         self._proximity_reading = 2 * np.ones(5)
         self._encoder_reading = np.zeros(2)
@@ -48,7 +50,7 @@ class Robot(object):
         vrep.simxGetObjectOrientation(
             self._client, self._object_handlers['robot'], -1, vrep.simx_opmode_streaming)
 
-    def set_motor_velocities(self, velocities):
+    def set_motor_velocities(self, velocities: np.ndarray) -> NoReturn:
         velocities = np.clip(velocities, self.velocity_bound[0], self.velocity_bound[1])
 
         vrep.simxSetJointTargetVelocity(self._client, self._object_handlers['left_motor'],
@@ -57,7 +59,7 @@ class Robot(object):
         vrep.simxSetJointTargetVelocity(self._client, self._object_handlers['right_motor'],
                                         velocities[1], vrep.simx_opmode_oneshot)
 
-    def get_encoders_rotations(self):
+    def get_encoders_rotations(self) -> np.ndarray:
         res, packed_vec = vrep.simxGetStringSignal(
             self._client, self._stream_names['encoders'],
             vrep.simx_opmode_buffer)
@@ -67,14 +69,14 @@ class Robot(object):
 
         return np.round(self._encoder_reading, 3)
 
-    def get_image(self):
+    def get_image(self) -> np.ndarray:
         res, resolution, image = vrep.simxGetVisionSensorImage(
             self._client, self._object_handlers['camera'], False, vrep.simx_opmode_buffer)
         img = np.array(image, dtype=np.uint8)
         img.resize([resolution[1], resolution[0], 3])
         return img
 
-    def get_proximity_values(self):
+    def get_proximity_values(self) -> np.ndarray:
         res, packed_vec = vrep.simxGetStringSignal(
             self._client, self._stream_names['proximity_sensor'],
             vrep.simx_opmode_buffer)
@@ -84,7 +86,7 @@ class Robot(object):
 
         return np.round(self._proximity_reading, 3)
 
-    def get_accelerometer_values(self):
+    def get_accelerometer_values(self) -> np.ndarray:
         res, packed_vec = vrep.simxGetStringSignal(
             self._client, self._stream_names['accelerometer'], vrep.simx_opmode_buffer)
 
@@ -93,7 +95,7 @@ class Robot(object):
 
         return np.asarray(self._accelerometer_reading)
 
-    def get_gyroscope_values(self):
+    def get_gyroscope_values(self) -> np.ndarray:
         res, packed_vec = vrep.simxGetStringSignal(
             self._client, self._stream_names['gyroscope'], vrep.simx_opmode_buffer)
 
@@ -101,7 +103,7 @@ class Robot(object):
             self._gyroscope_reading = vrep.simxUnpackFloats(packed_vec)
         return np.asarray(self._gyroscope_reading)
 
-    def get_velocities(self):
+    def get_velocities(self) -> np.ndarray:
         radius = self.wheel_diameter / 2.0
         wheels_velocities = self._encoder_reading / self._dt
 
@@ -110,7 +112,7 @@ class Robot(object):
 
         return np.round(np.array([linear_velocity, angular_velocity]), 3)
 
-    def get_position(self):
+    def get_position(self) -> np.ndarray:
         _, pos = vrep.simxGetObjectPosition(
             self._client, self._object_handlers['robot'], -1, vrep.simx_opmode_buffer)
 
@@ -118,4 +120,3 @@ class Robot(object):
             self._client, self._object_handlers['robot'], -1, vrep.simx_opmode_buffer)
 
         return np.round(pos[0:2] + [rot[2]], 3)
-
