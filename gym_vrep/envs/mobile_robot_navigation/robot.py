@@ -13,6 +13,14 @@ class Robot(object):
 
     def __init__(self, client: int, dt: float, objects_names: Dict[str, str],
                  stream_names: Dict[str, str]):
+        """A robot class constructor.
+
+        Args:
+            client: A V-REP client id.
+            dt: A delta time of the environment.
+            objects_names: A dictionary of objects names that robot contains.
+            stream_names: A dictionary of streams names that robot contains.
+        """
         self._object_names = objects_names
 
         self._stream_names = stream_names
@@ -27,6 +35,10 @@ class Robot(object):
         self._accelerometer_reading = np.zeros(3)
 
     def reset(self) -> NoReturn:
+        """A method that reset robot model.  It is zeroing all class variables and also
+        reinitialize handlers for newly loaded robot model into the environment.
+
+        """
         self._object_handlers = dict()
         self._proximity_reading = 2 * np.ones(5)
         self._encoder_reading = np.zeros(2)
@@ -51,6 +63,14 @@ class Robot(object):
             self._client, self._object_handlers['robot'], -1, vrep.simx_opmode_streaming)
 
     def set_motor_velocities(self, velocities: np.ndarray) -> NoReturn:
+        """A method that
+
+        Args:
+            velocities:
+
+        Returns:
+
+        """
         velocities = np.clip(velocities, self.velocity_bound[0], self.velocity_bound[1])
 
         vrep.simxSetJointTargetVelocity(self._client, self._object_handlers['left_motor'],
@@ -105,7 +125,7 @@ class Robot(object):
 
     def get_velocities(self) -> np.ndarray:
         radius = self.wheel_diameter / 2.0
-        wheels_velocities = self._encoder_reading / self._dt
+        wheels_velocities = self.get_encoders_rotations() / self._dt
 
         linear_velocity = np.sum(wheels_velocities) * radius / 2.0
         angular_velocity = radius * np.diff(wheels_velocities) / self.body_width

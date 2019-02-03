@@ -106,7 +106,7 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
 
         self._robot.reset()
         self._set_start_pose(self._robot._object_handlers['robot'], start_pose)
-        self._navigation.reset(np.append(start_pose['position'], start_pose['orientation']))
+        self._navigation.reset(np.append(start_pose[0:3], start_pose[3:]))
 
         vrep.simxStartSimulation(self._client, vrep.simx_opmode_blocking)
 
@@ -123,7 +123,12 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         done = False
         info = {'is_success': False}
 
-        reward = (self._prev_distance - state[5]) * self._reward_factor
+        reward_navigation = state[7] * np.cos(state[6])
+        reward_avoidance = 0.2 * np.tanh((np.min(state[0:5]) - 1.0))
+        reward = reward_navigation + reward_avoidance
+
+        if (state[0:5] < 0.1).any():
+            reward = -0.1
 
         if (state[0:5] < self._collision_dist).any():
             reward = -1.0
@@ -139,8 +144,8 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
 
     def _get_observation(self) -> np.ndarray:
         proximity_sensor_distance = self._robot.get_proximity_values()
-        velocities = self._robot.get_velocities()
         polar_coordinates = self._navigation.compute_position(self._goal)
+        velocities = self._robot.get_velocities()
 
         state = np.concatenate((proximity_sensor_distance, polar_coordinates, velocities))
 
@@ -167,7 +172,7 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
 
         return np.concatenate((proximity_sensor, polar_coordinatesh, velocities))
 
-    def _sample_start_parameters(self) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
+    def _sample_start_parameters(self) -> Tuple[np.ndarray, np.ndarray]:
         idx = np.random.randint(GOAL_LIST.shape[0])
         goal = self._generate_goal(idx)
         start_pose = self._generate_start_pose(idx)
@@ -175,16 +180,13 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         return goal, start_pose
 
     @staticmethod
-    def _generate_start_pose(idx: int) -> Dict[str, np.ndarray]:
+    def _generate_start_pose(idx: int) -> np.ndarray:
         position = np.take(SPAWN_LIST, idx, axis=0)
         position[0:2] += np.random.uniform(-0.1, 0.1, (2,))
-        yaw_angle = np.rad2deg(np.random.uniform(-np.pi, np.pi))
+        orientation = np.zeros(3)
+        orientation[2] = np.rad2deg(np.random.uniform(-np.pi, np.pi))
 
-        pose = {
-            'position': np.round(position, 2),
-            'orientation': np.array([0.0, 0.0, yaw_angle])
-        }
-        return pose
+        return np.concatenate((position, orientation))
 
     @staticmethod
     def _generate_goal(idx: int) -> np.ndarray:

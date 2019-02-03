@@ -36,7 +36,7 @@ class Ideal(Base):
         super(Ideal, self).__init__(robot, dt)
 
     def compute_position(self, goal) -> np.ndarray:
-        position = np.round(self._robot.get_position())
+        position = np.round(self._robot.get_position(), 3)
         position[2] = self._angle_correction(position[2])
 
         distance = np.linalg.norm(position[0:2] - goal)
