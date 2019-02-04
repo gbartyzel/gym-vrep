@@ -5,6 +5,12 @@ from gym_vrep.envs.vrep import vrep
 
 
 class Robot(object):
+    """A class that create interface between mobile robot model in simulation and remote API.
+    Main functionality of this class is:
+    * reading values from sensors (like proximity sensor, accelerometer etc.)
+    * setting motors velocities
+    * getting mobile robot pose from simulation engine
+    """
     wheel_diameter = 0.06
     body_width = 0.156
     nb_proximity_sensor = 5
