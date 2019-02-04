@@ -90,10 +90,11 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, Dict[str, bool]]:
         self._robot.set_motor_velocities(action)
+
         vrep.simxSynchronousTrigger(self._client)
+        vrep.simxGetPingTime(self._client)
 
         state = self._get_observation()
-
         reward, done, info = self._compute_reward(state)
 
         return state, reward, done, info
@@ -108,6 +109,7 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         self._set_start_pose(self._robot._object_handlers['robot'], start_pose)
         self._navigation.reset(np.append(start_pose[0:3], start_pose[3:]))
 
+        vrep.simxSynchronous(self._client, True)
         vrep.simxStartSimulation(self._client, vrep.simx_opmode_blocking)
 
         for _ in range(2):

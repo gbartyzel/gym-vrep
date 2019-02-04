@@ -29,10 +29,10 @@ class Robot(object):
 
         self._client = client
 
-        self._proximity_reading = 2 * np.ones(5)
-        self._encoder_reading = np.zeros(2)
-        self._gyroscope_reading = np.zeros(3)
-        self._accelerometer_reading = np.zeros(3)
+        self._proximity_sensor_values = 2 * np.ones(5)
+        self._encoder_ticks = np.zeros(2)
+        self._gyroscope_values = np.zeros(3)
+        self._accelerometer_values = np.zeros(3)
 
     def reset(self) -> NoReturn:
         """A method that reset robot model.  It is zeroing all class variables and also
@@ -40,17 +40,17 @@ class Robot(object):
 
         """
         self._object_handlers = dict()
-        self._proximity_reading = 2 * np.ones(5)
-        self._encoder_reading = np.zeros(2)
-        self._gyroscope_reading = np.zeros(3)
-        self._accelerometer_reading = np.zeros(3)
+        self._proximity_sensor_values = 2 * np.ones(5)
+        self._encoder_ticks = np.zeros(2)
+        self._gyroscope_values = np.zeros(3)
+        self._accelerometer_values = np.zeros(3)
 
         for key, name in self._object_names.items():
-            res, temp = vrep.simxGetObjectHandle(self._client, name, vrep.simx_opmode_oneshot_wait)
+            res, temp = vrep.simxGetObjectHandle(self._client, name, vrep.simx_opmode_oneshot)
             self._object_handlers[key] = temp
 
         for key, stream in self._stream_names.items():
-            vrep.simxGetStringSignal(self._client, stream, vrep.simx_opmode_streaming)
+            vrep.simxReadStringStream(self._client, stream, vrep.simx_opmode_streaming)
 
         if 'camera' in self._object_handlers:
             vrep.simxGetVisionSensorImage(
@@ -63,12 +63,10 @@ class Robot(object):
             self._client, self._object_handlers['robot'], -1, vrep.simx_opmode_streaming)
 
     def set_motor_velocities(self, velocities: np.ndarray) -> NoReturn:
-        """A method that
+        """A method that sets motors velocities and clips if given values exceed boundaries.
 
         Args:
-            velocities:
-
-        Returns:
+            velocities: Target motors velocities in rad/s.
 
         """
         velocities = np.clip(velocities, self.velocity_bound[0], self.velocity_bound[1])
@@ -80,16 +78,25 @@ class Robot(object):
                                         velocities[1], vrep.simx_opmode_oneshot)
 
     def get_encoders_rotations(self) -> np.ndarray:
-        res, packed_vec = vrep.simxGetStringSignal(
-            self._client, self._stream_names['encoders'],
-            vrep.simx_opmode_buffer)
+        """Reads encoders ticks from robot.
+
+        Returns:
+            encoder_ticks: Current values of encoders ticks.
+        """
+        res, packed_vec = vrep.simxReadStringStream(
+            self._client, self._stream_names['encoders'], vrep.simx_opmode_buffer)
 
         if res == vrep.simx_return_ok:
-            self._encoder_reading = np.asanyarray(vrep.simxUnpackFloats(packed_vec))
-
-        return np.round(self._encoder_reading, 3)
+            self._encoder_ticks = np.asarray(vrep.simxUnpackFloats(packed_vec))
+            self._encoder_ticks = np.round(self._encoder_ticks, 3)
+        return self._encoder_ticks
 
     def get_image(self) -> np.ndarray:
+        """Reads image from camera mounted to robot.
+
+        Returns:
+            img: Image received from robot
+        """
         res, resolution, image = vrep.simxGetVisionSensorImage(
             self._client, self._object_handlers['camera'], False, vrep.simx_opmode_buffer)
         img = np.array(image, dtype=np.uint8)
@@ -97,46 +104,75 @@ class Robot(object):
         return img
 
     def get_proximity_values(self) -> np.ndarray:
-        res, packed_vec = vrep.simxGetStringSignal(
-            self._client, self._stream_names['proximity_sensor'],
-            vrep.simx_opmode_buffer)
+        """Reads proximity sensors values from robot.
+
+        Returns:
+            proximity_sensor_values: Array of proximity sensor values.
+        """
+        res, packed_vec = vrep.simxReadStringStream(
+            self._client, self._stream_names['proximity_sensor'], vrep.simx_opmode_buffer)
 
         if res == vrep.simx_return_ok:
-            self._proximity_reading = vrep.simxUnpackFloats(packed_vec)
-
-        return np.round(self._proximity_reading, 3)
+            self._proximity_sensor_values = vrep.simxUnpackFloats(packed_vec)
+            self._proximity_sensor_values = np.round(self._proximity_sensor_values, 3)
+        return self._proximity_sensor_values
 
     def get_accelerometer_values(self) -> np.ndarray:
-        res, packed_vec = vrep.simxGetStringSignal(
+        """Reads accelerometer values from robot.
+
+        Returns:
+            accelerometer_values: Array of values received from accelerometer.
+        """
+        res, packed_vec = vrep.simxReadStringStream(
             self._client, self._stream_names['accelerometer'], vrep.simx_opmode_buffer)
 
         if res == vrep.simx_return_ok:
-            self._accelerometer_reading = vrep.simxUnpackFloats(packed_vec)
+            self._accelerometer_values = vrep.simxUnpackFloats(packed_vec)
+            self._accelerometer_values = np.asarray(self._accelerometer_values)
 
-        return np.asarray(self._accelerometer_reading)
+        return self._accelerometer_values
 
     def get_gyroscope_values(self) -> np.ndarray:
-        res, packed_vec = vrep.simxGetStringSignal(
+        """Reads gyroscope values from robot.
+
+        Returns:
+            gyroscope_values: Array of values received from gyroscope.
+        """
+        res, packed_vec = vrep.simxReadStringStream(
             self._client, self._stream_names['gyroscope'], vrep.simx_opmode_buffer)
 
         if res == vrep.simx_return_ok:
-            self._gyroscope_reading = vrep.simxUnpackFloats(packed_vec)
-        return np.asarray(self._gyroscope_reading)
+            self._gyroscope_values = vrep.simxUnpackFloats(packed_vec)
+            self._gyroscope_values = np.asarray(self._gyroscope_values)
+        return self._gyroscope_values
 
     def get_velocities(self) -> np.ndarray:
+        """Computes current linear and angular velocity of robot. Velocities are computed using
+        mobile robot kinematic model.
+
+        Returns:
+            velocities: Array of linear and angular mobile robot velocities.
+        """
         radius = self.wheel_diameter / 2.0
         wheels_velocities = self.get_encoders_rotations() / self._dt
 
         linear_velocity = np.sum(wheels_velocities) * radius / 2.0
         angular_velocity = radius * np.diff(wheels_velocities) / self.body_width
+        velocities = np.round(np.array([linear_velocity, angular_velocity]), 3)
 
-        return np.round(np.array([linear_velocity, angular_velocity]), 3)
+        return velocities
 
-    def get_position(self) -> np.ndarray:
+    def get_pose(self) -> np.ndarray:
+        """Reads current pose of the robot.
+
+        Returns:
+            pose: Pose array containing x,y and yaw.
+        """
         _, pos = vrep.simxGetObjectPosition(
             self._client, self._object_handlers['robot'], -1, vrep.simx_opmode_buffer)
 
         _, rot = vrep.simxGetObjectOrientation(
             self._client, self._object_handlers['robot'], -1, vrep.simx_opmode_buffer)
 
-        return np.round(pos[0:2] + [rot[2]], 3)
+        pose = np.round(pos[0:2] + [rot[2]], 3)
+        return pose
