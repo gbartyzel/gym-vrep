@@ -75,6 +75,9 @@ class Robot(object):
             velocities: Target motors velocities in rad/s.
 
         """
+        if np.shape(velocities)[0] != 2:
+            raise ValueError('Dimension of input motors velocities is incorrect!')
+        
         velocities = np.clip(velocities, self.velocity_bound[0], self.velocity_bound[1])
 
         vrep.simxSetJointTargetVelocity(self._client, self._object_handlers['left_motor'],
