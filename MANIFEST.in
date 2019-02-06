@@ -1,0 +1,2 @@
+include gym_vrep/envs/assets/models/*.ttm
+include gym_vrep/envs/assets/scenes/*.ttt
