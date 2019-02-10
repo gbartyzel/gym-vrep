@@ -52,21 +52,8 @@ class Robot(object):
         self._accelerometer_values = np.zeros(3)
 
         for key, name in self._object_names.items():
-            res, temp = vrep.simxGetObjectHandle(self._client, name, vrep.simx_opmode_oneshot)
+            res, temp = vrep.simxGetObjectHandle(self._client, name, vrep.simx_opmode_oneshot_wait)
             self._object_handlers[key] = temp
-
-        for key, stream in self._stream_names.items():
-            vrep.simxReadStringStream(self._client, stream, vrep.simx_opmode_streaming)
-
-        if 'camera' in self._object_handlers:
-            vrep.simxGetVisionSensorImage(
-                self._client, self._object_handlers['camera'], False, vrep.simx_opmode_streaming)
-
-        vrep.simxGetObjectPosition(
-            self._client, self._object_handlers['robot'], -1, vrep.simx_opmode_streaming)
-
-        vrep.simxGetObjectOrientation(
-            self._client, self._object_handlers['robot'], -1, vrep.simx_opmode_streaming)
 
     def set_motor_velocities(self, velocities: np.ndarray) -> NoReturn:
         """A method that sets motors velocities and clips if given values exceed boundaries.
@@ -93,10 +80,10 @@ class Robot(object):
             encoder_ticks: Current values of encoders ticks.
         """
         res, packed_vec = vrep.simxReadStringStream(
-            self._client, self._stream_names['encoders'], vrep.simx_opmode_buffer)
+            self._client, self._stream_names['encoders'], vrep.simx_opmode_oneshot)
 
         if res == vrep.simx_return_ok:
-            self._encoder_ticks = np.asarray(vrep.simxUnpackFloats(packed_vec))
+            self._encoder_ticks = vrep.simxUnpackFloats(packed_vec)
             self._encoder_ticks = np.round(self._encoder_ticks, 3)
         return self._encoder_ticks
 
@@ -107,7 +94,7 @@ class Robot(object):
             img: Image received from robot
         """
         res, resolution, image = vrep.simxGetVisionSensorImage(
-            self._client, self._object_handlers['camera'], False, vrep.simx_opmode_buffer)
+            self._client, self._object_handlers['camera'], False, vrep.simx_opmode_oneshot)
         img = np.array(image, dtype=np.uint8)
         img.resize([resolution[1], resolution[0], 3])
         return img
@@ -119,7 +106,7 @@ class Robot(object):
             proximity_sensor_values: Array of proximity sensor values.
         """
         res, packed_vec = vrep.simxReadStringStream(
-            self._client, self._stream_names['proximity_sensor'], vrep.simx_opmode_buffer)
+            self._client, self._stream_names['proximity_sensor'], vrep.simx_opmode_oneshot)
 
         if res == vrep.simx_return_ok:
             self._proximity_sensor_values = vrep.simxUnpackFloats(packed_vec)
@@ -133,7 +120,7 @@ class Robot(object):
             accelerometer_values: Array of values received from accelerometer.
         """
         res, packed_vec = vrep.simxReadStringStream(
-            self._client, self._stream_names['accelerometer'], vrep.simx_opmode_buffer)
+            self._client, self._stream_names['accelerometer'], vrep.simx_opmode_oneshot)
 
         if res == vrep.simx_return_ok:
             self._accelerometer_values = vrep.simxUnpackFloats(packed_vec)
@@ -148,7 +135,7 @@ class Robot(object):
             gyroscope_values: Array of values received from gyroscope.
         """
         res, packed_vec = vrep.simxReadStringStream(
-            self._client, self._stream_names['gyroscope'], vrep.simx_opmode_buffer)
+            self._client, self._stream_names['gyroscope'], vrep.simx_opmode_oneshot)
 
         if res == vrep.simx_return_ok:
             self._gyroscope_values = vrep.simxUnpackFloats(packed_vec)
@@ -178,10 +165,10 @@ class Robot(object):
             pose: Pose array containing x,y and yaw.
         """
         _, pos = vrep.simxGetObjectPosition(
-            self._client, self._object_handlers['robot'], -1, vrep.simx_opmode_buffer)
+            self._client, self._object_handlers['robot'], -1, vrep.simx_opmode_oneshot)
 
         _, rot = vrep.simxGetObjectOrientation(
-            self._client, self._object_handlers['robot'], -1, vrep.simx_opmode_buffer)
+            self._client, self._object_handlers['robot'], -1, vrep.simx_opmode_oneshot)
 
         pose = np.round(pos[0:2] + [rot[2]], 3)
         return pose

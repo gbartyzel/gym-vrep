@@ -34,13 +34,20 @@ class VrepEnv(gym.Env):
         self._port = self.np_random.randint(20000, 21000)
         self._client = self._run_env()
 
-        self._set_floatparam(vrep.sim_floatparam_simulation_time_step, dt)
-        self._load_scene(scene)
-        self._load_model(model)
         if not self._get_boolparam(vrep.sim_boolparam_headless):
             self._clear_gui()
+        self._load_scene(scene)
+        self._load_model(model)
 
         print('Connected to port {}'.format(self._port))
+
+    def _start(self):
+        self._set_floatparam(vrep.sim_floatparam_simulation_time_step, self._dt)
+
+        vrep.simxSynchronous(self._client, True)
+        vrep.simxStartSimulation(self._client, vrep.simx_opmode_blocking)
+
+        self._set_boolparam(vrep.sim_boolparam_threaded_rendering_enabled, True)
 
     def _run_env(self) -> int:
         """A method that run V-REP in synchronous mode.
@@ -95,7 +102,6 @@ class VrepEnv(gym.Env):
         self._set_boolparam(vrep.sim_boolparam_hierarchy_visible, False)
         self._set_boolparam(vrep.sim_boolparam_console_visible, False)
         self._set_boolparam(vrep.sim_boolparam_browser_visible, False)
-        self._set_boolparam(vrep.sim_boolparam_threaded_rendering_enabled, True)
 
     def _set_start_pose(self, object_handle: int, pose: np.ndarray) -> NoReturn:
         """Sets start pose of the loaded model.
@@ -124,7 +130,8 @@ class VrepEnv(gym.Env):
             value: Boolean value to be set.
 
         """
-        res = vrep.simxSetBooleanParameter(self._client, parameter, value, vrep.simx_opmode_oneshot)
+        res = vrep.simxSetBooleanParameter(self._client, parameter, value,
+                                           vrep.simx_opmode_oneshot)
         assert (res == vrep.simx_return_ok or res == vrep.simx_return_novalue_flag), (
             'Could not set boolean parameter!')
 
@@ -142,7 +149,8 @@ class VrepEnv(gym.Env):
             'Could not set float parameter!')
 
     def _get_boolparam(self, parameter: int) -> bool:
-        res, value = vrep.simxGetBooleanParameter(self._client, parameter, vrep.simx_opmode_oneshot)
+        res, value = vrep.simxGetBooleanParameter(self._client, parameter,
+                                                  vrep.simx_opmode_oneshot)
         assert (res == vrep.simx_return_ok or res == vrep.simx_return_novalue_flag), (
             'Could not get boolean parameter!')
         return value
