@@ -1,7 +1,10 @@
 import abc
+from typing import Any
+from typing import NoReturn
+from typing import Tuple
+
 import numpy as np
 
-from typing import Any, NoReturn, Tuple
 from gym_vrep.envs.mobile_robot_navigation.robot import Robot
 
 
@@ -64,10 +67,11 @@ class Base(metaclass=abc.ABCMeta):
 
 
 class Ideal(Base):
-    """A class that computes robot polar coordinates of mobile robot based on absolute pose
-    received from simulation engine and kinematic model.
+    """A class that computes robot polar coordinates of mobile robot based on
+    absolute pose received from simulation engine and kinematic model.
 
     """
+
     def __init__(self, robot: Robot, dt: float):
         """A constructor of class.
 
@@ -110,10 +114,11 @@ class Ideal(Base):
 
 
 class Odometry(Base):
-    """A class that computes robot polar coordinates based of mobile robot based on odometry and
-    kinematic model.
+    """A class that computes robot polar coordinates based of mobile robot based
+    on odometry and kinematic model.
 
     """
+
     def __init__(self, robot: Robot, dt: float):
         """A constructor of class.
 
@@ -156,8 +161,9 @@ class Odometry(Base):
         return polar_coordinates
 
     def compute_delta_motion(self) -> Tuple[float, float]:
-        """A method that compute difference between current traveled path and previous path.
-        Also compute difference between current mobile robot rotation and previous one.
+        """A method that compute difference between current traveled path and
+        previous path. Also compute difference between current mobile robot
+        rotation and previous one.
 
         Returns:
             delta_path: Delta of traveled path by robot
@@ -184,10 +190,11 @@ class Odometry(Base):
 
 
 class Gyrodometry(Odometry):
-    """A class that computes robot polar coordinates based of mobile robot based on odometry,
-    readings from gyroscope and kinematic model.
+    """A class that computes robot polar coordinates based of mobile robot based
+    on odometry, readings from gyroscope and kinematic model.
 
     """
+
     def __init__(self, robot: Robot, dt: float):
         """A constructor of class.
 
@@ -229,8 +236,9 @@ class Gyrodometry(Odometry):
         return np.round(np.array([distance, heading_angle]), 3)
 
     def compute_rotation(self) -> float:
-        """ A method that compute difference between current and previous rotation angle of
-        mobile robot. The calculation are based on mobile robot angular velocity along z-axis.
+        """ A method that compute difference between current and previous
+        rotation angle of mobile robot. The calculation are based on mobile
+        robot angular velocity along z-axis.
 
         Returns:
             delta_beta: Delta of rotation done by robot

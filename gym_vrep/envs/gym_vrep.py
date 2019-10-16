@@ -1,12 +1,12 @@
 import os
 import subprocess
 import time
+from typing import Any
+from typing import NoReturn
 
 import gym
 import numpy as np
-
 from gym.utils import seeding
-from typing import NoReturn, Dict, Any
 
 from gym_vrep.envs.vrep import vrep
 
@@ -27,8 +27,10 @@ class VrepEnv(gym.Env):
         """
         self.seed()
         self._assets_path = os.path.join(os.path.dirname(__file__), 'assets')
-        self._scenes_list = os.listdir(os.path.join(self._assets_path, 'scenes'))
-        self._models_list = os.listdir(os.path.join(self._assets_path, 'models'))
+        self._scenes_list = os.listdir(
+            os.path.join(self._assets_path, 'scenes'))
+        self._models_list = os.listdir(
+            os.path.join(self._assets_path, 'models'))
 
         self._dt = dt
         self._port = self.np_random.randint(20000, 21000)
@@ -47,7 +49,9 @@ class VrepEnv(gym.Env):
         vrep.simxSynchronous(self._client, True)
         vrep.simxStartSimulation(self._client, vrep.simx_opmode_blocking)
 
-        self._set_boolparam(vrep.sim_boolparam_threaded_rendering_enabled, True)
+        if not self._get_boolparam(vrep.sim_boolparam_headless):
+            self._set_boolparam(vrep.sim_boolparam_threaded_rendering_enabled,
+                                True)
 
     def _run_env(self) -> int:
         """A method that run V-REP in synchronous mode.
@@ -56,13 +60,17 @@ class VrepEnv(gym.Env):
         Returns: Remote API client ID
 
         """
-        vrep_exec = os.environ['V_REP'] + 'vrep.sh '
-        synch_mode_cmd = '-gREMOTEAPISERVERSERVICE_' + str(self._port) + '_FALSE_TRUE '
+        vrep_exec = os.environ['V_REP'] + 'vrep.sh -h '
+        synch_mode_cmd = '-gREMOTEAPISERVERSERVICE_' + str(
+            self._port) + '_FALSE_TRUE '
 
         subprocess.call(vrep_exec + synch_mode_cmd + ' &', shell=True)
         time.sleep(5.0)
 
+        print('Connecting to V-REP on port {}'.format(self._port))
         client = vrep.simxStart('127.0.0.1', self._port, True, True, 1000, 5)
+        assert client >= 0, 'Connection to V-REP failed!'
+
         vrep.simxSynchronous(client, True)
 
         return client
@@ -77,7 +85,8 @@ class VrepEnv(gym.Env):
         assert (scene + '.ttt' in self._scenes_list), 'Scene not found!'
 
         scene_path = os.path.join(self._assets_path, 'scenes', scene + '.ttt')
-        res = vrep.simxLoadScene(self._client, scene_path, 1, vrep.simx_opmode_blocking)
+        res = vrep.simxLoadScene(self._client, scene_path, 1,
+                                 vrep.simx_opmode_blocking)
         assert (res == vrep.simx_return_ok), 'Could not load scene!'
 
     def _load_model(self, model) -> NoReturn:
@@ -90,13 +99,14 @@ class VrepEnv(gym.Env):
         assert (model + '.ttm' in self._models_list), 'Model not found!'
 
         model_path = os.path.join(self._assets_path, 'models', model + '.ttm')
-        res, _ = vrep.simxLoadModel(self._client, model_path, 1, vrep.simx_opmode_blocking)
+        res, _ = vrep.simxLoadModel(self._client, model_path, 1,
+                                    vrep.simx_opmode_blocking)
 
         assert (res == vrep.simx_return_ok), 'Could not load model!'
 
     def _clear_gui(self) -> NoReturn:
-        """Clears GUI with unnecessary elements like model hierarchy, library browser and
-        console. Also this method enables threaded rendering.
+        """Clears GUI with unnecessary elements like model hierarchy, library
+        browser and console. Also this method enables threaded rendering.
 
         """
         self._set_boolparam(vrep.sim_boolparam_hierarchy_visible, False)
@@ -115,11 +125,13 @@ class VrepEnv(gym.Env):
         assert (np.shape(pose)[0] == 6), 'Wrong size of the pose array!'
 
         res = vrep.simxSetObjectPosition(
-            self._client, object_handle, -1, pose[0:3], vrep.simx_opmode_blocking)
+            self._client, object_handle, -1, pose[0:3],
+            vrep.simx_opmode_blocking)
         assert (res == vrep.simx_return_ok), 'Could not set model position!'
 
         res = vrep.simxSetObjectOrientation(
-            self._client, object_handle, -1, pose[3:], vrep.simx_opmode_blocking)
+            self._client, object_handle, -1, pose[3:],
+            vrep.simx_opmode_blocking)
         assert (res == vrep.simx_return_ok), 'Could not set model orientation!'
 
     def _set_boolparam(self, parameter: int, value: bool) -> NoReturn:
@@ -132,7 +144,8 @@ class VrepEnv(gym.Env):
         """
         res = vrep.simxSetBooleanParameter(self._client, parameter, value,
                                            vrep.simx_opmode_oneshot)
-        assert (res == vrep.simx_return_ok or res == vrep.simx_return_novalue_flag), (
+        assert (res == vrep.simx_return_ok or
+                res == vrep.simx_return_novalue_flag), (
             'Could not set boolean parameter!')
 
     def _set_floatparam(self, parameter: int, value: float) -> NoReturn:
@@ -145,13 +158,15 @@ class VrepEnv(gym.Env):
         """
         res = vrep.simxSetFloatingParameter(self._client, parameter, value,
                                             vrep.simx_opmode_oneshot)
-        assert (res == vrep.simx_return_ok or res == vrep.simx_return_novalue_flag), (
+        assert (res == vrep.simx_return_ok or
+                res == vrep.simx_return_novalue_flag), (
             'Could not set float parameter!')
 
     def _get_boolparam(self, parameter: int) -> bool:
         res, value = vrep.simxGetBooleanParameter(self._client, parameter,
                                                   vrep.simx_opmode_oneshot)
-        assert (res == vrep.simx_return_ok or res == vrep.simx_return_novalue_flag), (
+        assert (res == vrep.simx_return_ok or
+                res == vrep.simx_return_novalue_flag), (
             'Could not get boolean parameter!')
         return value
 

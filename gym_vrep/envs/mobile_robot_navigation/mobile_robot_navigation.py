@@ -1,14 +1,15 @@
+from typing import Dict
+from typing import Tuple
+
 import numpy as np
-
-from typing import Dict, Tuple
-
 from gym import spaces
+
 from gym_vrep.envs import gym_vrep
-from gym_vrep.envs.vrep import vrep
-from gym_vrep.envs.mobile_robot_navigation.robot import Robot
+from gym_vrep.envs.mobile_robot_navigation.navigation import Gyrodometry
 from gym_vrep.envs.mobile_robot_navigation.navigation import Ideal
 from gym_vrep.envs.mobile_robot_navigation.navigation import Odometry
-from gym_vrep.envs.mobile_robot_navigation.navigation import Gyrodometry
+from gym_vrep.envs.mobile_robot_navigation.robot import Robot
+from gym_vrep.envs.vrep import vrep
 
 NAVIGATION_TYPE = {
     'Ideal': Ideal,
@@ -51,14 +52,16 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
     Four variants of this environment are given:
     * Ideal: a position of mobile robot is received from simulation engine,
     * Odometry: a position o mobile robot is computed by encoders ticks,
-    * Gyrodometry: a position of mobile robot is computed by encoders ticks and readings from
-    gyroscope
-    * Visual: it's a ideal variant with camera in stace space instead of proximity sensors reading.
+    * Gyrodometry: a position of mobile robot is computed by encoders ticks and
+    readings from gyroscope
+    * Visual: it's a ideal variant with camera in stace space instead of
+    proximity sensors reading.
 
-    The state space of this environment includes proximity sensors readings (or image from
-    camera), polar coordinates of mobile robot, linear and angular velocities. Action space are
-    target motors velocities in rad/s. The reward function is based on robot velocity,
-    heading angle and distance from nearest obstacle.
+    The state space of this environment includes proximity sensors readings
+    (or image from camera), polar coordinates of mobile robot, linear and
+    angular velocities. Action space are target motors velocities in rad/s.
+    The reward function is based on robot velocity, heading angle and
+    distance from nearest obstacle.
 
     """
     metadata = {'render.modes': ['human']}
@@ -72,7 +75,8 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
             dt: Delta time of simulation.
         """
         scene = 'mobile_robot_navigation_room'
-        super(MobileRobotNavigationEnv, self).__init__(scene, _choose_model(self.enable_vision), dt)
+        super(MobileRobotNavigationEnv, self).__init__(scene, _choose_model(
+            self.enable_vision), dt)
         v_rep_obj_names = {
             'left_motor': 'smartBotLeftMotor',
             'right_motor': 'smartBotRightMotor',
@@ -95,36 +99,45 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         self._prev_distance = 0.0
         self._reward_factor = 10
 
-        self._robot = Robot(self._client, self._dt, v_rep_obj_names, v_rep_stream_names)
+        self._robot = Robot(self._client, self._dt, v_rep_obj_names,
+                            v_rep_stream_names)
         self._navigation = self.navigation_type(self._robot, dt)
 
         radius = self._robot.wheel_diameter / 2.0
         max_linear_vel = radius * 2 * self._robot.velocity_bound[1] / 2
-        max_angular_vel = radius / self._robot.body_width * np.diff(self._robot.velocity_bound)
+        max_angular_vel = radius / self._robot.body_width * np.diff(
+            self._robot.velocity_bound)
 
-        self.action_space = spaces.Box(self._robot.velocity_bound[0], self._robot.velocity_bound[1],
-                                       shape=self._robot.velocity_bound.shape, dtype='float32')
+        self.action_space = spaces.Box(self._robot.velocity_bound[0],
+                                       self._robot.velocity_bound[1],
+                                       shape=self._robot.velocity_bound.shape,
+                                       dtype='float32')
 
         low = self._get_observation_low(max_angular_vel)
         high = self._get_observation_high(max_linear_vel, max_angular_vel)
 
         if self.enable_vision:
             self.observation_space = spaces.Dict(dict(
-                image=spaces.Box(low=0, high=255, shape=(640, 480, 3), dtype=np.uint8),
+                image=spaces.Box(low=0, high=255, shape=(640, 480, 3),
+                                 dtype=np.uint8),
                 scalars=spaces.Box(low=low, high=high, dtype=np.float32),
             ))
         else:
-            self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
+            self.observation_space = spaces.Box(low=low, high=high,
+                                                dtype=np.float32)
 
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, Dict[str, bool]]:
+    def step(self, action: np.ndarray) -> Tuple[
+        np.ndarray, float, bool, Dict[str, bool]]:
         """Performs simulation step by applying given action.
 
         Args:
             action: A desired motors velocities.
 
         Returns:
-            state: The sensors readings, polar coordinates, linear and angular velocities.
-            reward: The reward received in current simulation step for state-action pair
+            state: The sensors readings, polar coordinates, linear and
+            angular velocities.
+            reward: The reward received in current simulation step for
+            state-action pair
             done: Flag if environment is finished.
             info: Dictionary containing diagnostic information.
 
@@ -145,7 +158,8 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         """Resets environment to initial state.
 
         Returns:
-            state: The sensors readings, polar coordinates, linear and angular velocities.
+            state: The sensors readings, polar coordinates, linear and
+            angular velocities.
         """
         self._goal, start_pose = self._sample_start_parameters()
         print('Current goal: {}'.format(self._goal))
@@ -165,16 +179,20 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
 
         return state
 
-    def _compute_reward(self, state: np.ndarray) -> Tuple[float, bool, Dict[str, bool]]:
+    def _compute_reward(self, state: np.ndarray) -> Tuple[
+        float, bool, Dict[str, bool]]:
         """Computes reward for current state-action pair.
 
         Args:
-            state: The sensors readings, polar coordinates, linear and angular velocities.
+            state: The sensors readings, polar coordinates, linear and angular
+            velocities.
 
         Returns:
-            reward: The reward received in current simulation step for state-action pair
+            reward: The reward received in current simulation step for
+            state-action pair
             done: Flag if environment is finished.
-            info: Dictionary that contain information if robot successfully finished task.
+            info: Dictionary that contain information if robot successfully
+            finished task.
 
         """
         done = False
@@ -203,14 +221,16 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         """Gets current observation space from environment.
 
         Returns:
-            state: The sensors readings, polar coordinates, linear and angular velocities.
+            state: The sensors readings, polar coordinates, linear and angular
+            velocities.
 
         """
         proximity_sensor_distance = self._robot.get_proximity_values()
         polar_coordinates = self._navigation.compute_position(self._goal)
         velocities = self._robot.get_velocities()
 
-        state = np.concatenate((proximity_sensor_distance, polar_coordinates, velocities))
+        state = np.concatenate(
+            (proximity_sensor_distance, polar_coordinates, velocities))
 
         if self.enable_vision:
             image = self._robot.get_image()
@@ -229,14 +249,17 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
 
         """
         proximity_sensor = (
-                np.ones(self._robot.nb_proximity_sensor) * self._robot.proximity_sensor_bound[0])
+                np.ones(self._robot.nb_proximity_sensor) *
+                self._robot.proximity_sensor_bound[0])
         polar_coordinates = np.array([0.0, -np.pi])
         velocities = np.array([0.0, -max_angular_vel])
 
-        low_boundaries = np.concatenate((proximity_sensor, polar_coordinates, velocities))
+        low_boundaries = np.concatenate(
+            (proximity_sensor, polar_coordinates, velocities))
         return low_boundaries
 
-    def _get_observation_high(self, max_linear_vel: float, max_angular_vel: float) -> np.ndarray:
+    def _get_observation_high(self, max_linear_vel: float,
+                              max_angular_vel: float) -> np.ndarray:
         """Gets highest values of observation space
 
         Args:
@@ -249,11 +272,13 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         """
         env_diagonal = np.sqrt(2.0 * (5.0 ** 2))
         proximity_sensor = (
-                np.ones(self._robot.nb_proximity_sensor) * self._robot.proximity_sensor_bound[1])
+                np.ones(self._robot.nb_proximity_sensor) *
+                self._robot.proximity_sensor_bound[1])
         polar_coordinatesh = np.array([env_diagonal, np.pi])
         velocities = np.array([max_linear_vel, max_angular_vel])
 
-        high_boundaries = np.concatenate((proximity_sensor, polar_coordinatesh, velocities))
+        high_boundaries = np.concatenate(
+            (proximity_sensor, polar_coordinatesh, velocities))
         return high_boundaries
 
     def _sample_start_parameters(self) -> Tuple[np.ndarray, np.ndarray]:
@@ -271,7 +296,8 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
 
     @staticmethod
     def _generate_start_pose(idx: int) -> np.ndarray:
-        """A method that generates mobile robot start pose. Pose is chosen from four variants.
+        """A method that generates mobile robot start pose. Pose is chosen from
+        four variants.
         To chosen pose uniform noise is applied.
 
         Args:
@@ -290,7 +316,8 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
 
     @staticmethod
     def _generate_goal(idx: int) -> np.ndarray:
-        """A method that generates goal position for mobile robot. Desired position is chosen from
+        """A method that generates goal position for mobile robot. Desired
+        position is chosen from
         four variants. To chosen goal uniform noise is applied.
 
         Args:
