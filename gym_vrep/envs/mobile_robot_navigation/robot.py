@@ -1,8 +1,8 @@
-from typing import Dict
 from typing import NoReturn
 
 import numpy as np
 
+import gym_vrep.envs.vrep.vrep_lib as vlib
 from gym_vrep.envs.vrep import vrep
 
 
@@ -16,48 +16,86 @@ class Robot(object):
     wheel_diameter = 0.06
     body_width = 0.156
     nb_proximity_sensor = 5
-    velocity_bound = np.array([0.0, 10.0])
-    proximity_sensor_bound = np.array([0.02, 2.0])
+    velocity_limit = np.array([0.0, 10.0])
+    ultrasonic_sensor_bound = np.array([0.02, 2.0])
 
-    def __init__(self, client: int, dt: float, objects_names: Dict[str, str],
-                 stream_names: Dict[str, str]):
+    def __init__(self, client: int, dt: float, enable_vision: bool):
         """A robot class constructor.
 
         Args:
             client: A V-REP client id.
             dt: A delta time of the environment.
-            objects_names: A dictionary of objects names that robot contains.
-            stream_names: A dictionary of streams names that robot contains.
+            enable_vision: Flag that set image acquisition from robot camera
         """
-        self._object_names = objects_names
-
-        self._stream_names = stream_names
         self._dt = dt
-        self._object_handlers = dict()
+        self._enable_vision = enable_vision
+
+        self._robot_handle = -1
+        self._camera_handle = -1
+        self._ultrasonic_handles = [-1] * self.nb_proximity_sensor
+        self._motor_handles = 2 * [-1]
+
+        self._encoder_signals = ['leftEncoderSignal', 'rightEncoderSignal']
+        self._imu_signals = ['accelerometerSignal', 'gyroscopeSignal']
 
         self._client = client
 
-        self._proximity_sensor_values = 2 * np.ones(5)
+        self._ultrasonic_values = 2 * np.ones(5)
         self._encoder_ticks = np.zeros(2)
         self._gyroscope_values = np.zeros(3)
         self._accelerometer_values = np.zeros(3)
 
-    def reset(self) -> NoReturn:
+        self._initialize()
+
+    def _initialize(self) -> NoReturn:
         """A method that reset robot model.  It is zeroing all class variables
         and also reinitialize handlers for newly loaded robot model into the
         environment.
 
         """
-        self._object_handlers = dict()
-        self._proximity_sensor_values = 2 * np.ones(5)
+        self._initialize_robot_handle()
+        self._initialize_motors()
+        self._initialize_ultrasonic()
+        self._initialize_encoders_stream()
+        self._initialize_imu_stream()
+        if self._enable_vision:
+            self._initialize_camera()
+
+    def _initialize_robot_handle(self):
+        self._robot_handle = vlib.get_object_handle(self._client, 'smartBot')
+        vlib.get_object_position(self._client, self._robot_handle, stream=True)
+        vlib.get_object_orientation(self._client, self._robot_handle,
+                                    stream=True)
+
+    def _initialize_motors(self):
+        self._motor_handles[0] = vlib.get_object_handle(self._client,
+                                                        'smartBot_leftMotor')
+        self._motor_handles[1] = vlib.get_object_handle(self._client,
+                                                        'smartBot_rightMotor')
+
+    def _initialize_ultrasonic(self):
+        self._ultrasonic_values = 2 * np.ones(5)
+        for i in range(self.nb_proximity_sensor):
+            name = 'smartBot_ultrasonicSensor{}'.format(i + 1)
+            object_handle = vlib.get_object_handle(self._client, name)
+            vlib.read_proximity_sensor(self._client, object_handle, True)
+            self._ultrasonic_handles[i] = object_handle
+
+    def _initialize_camera(self):
+        object_handle = vlib.get_object_handle(self._client, 'smartBotCamera')
+        vlib.read_proximity_sensor(self._client, object_handle, True)
+        self._camera_handle = object_handle
+
+    def _initialize_encoders_stream(self):
         self._encoder_ticks = np.zeros(2)
+        for name in self._encoder_signals:
+            vlib.read_float_stream(self._client, name, True)
+
+    def _initialize_imu_stream(self):
         self._gyroscope_values = np.zeros(3)
         self._accelerometer_values = np.zeros(3)
-
-        for key, name in self._object_names.items():
-            res, temp = vrep.simxGetObjectHandle(self._client, name,
-                                                 vrep.simx_opmode_oneshot_wait)
-            self._object_handlers[key] = temp
+        for name in self._imu_signals:
+            vlib.read_string_stream(self._client, name, True)
 
     def set_motor_velocities(self, velocities: np.ndarray) -> NoReturn:
         """A method that sets motors velocities and clips if given values exceed
@@ -71,16 +109,13 @@ class Robot(object):
             raise ValueError(
                 'Dimension of input motors velocities is incorrect!')
 
-        velocities = np.clip(velocities, self.velocity_bound[0],
-                             self.velocity_bound[1])
+        velocities = np.clip(velocities, self.velocity_limit[0],
+                             self.velocity_limit[1])
 
-        vrep.simxSetJointTargetVelocity(self._client,
-                                        self._object_handlers['left_motor'],
-                                        velocities[0], vrep.simx_opmode_oneshot)
-
-        vrep.simxSetJointTargetVelocity(self._client,
-                                        self._object_handlers['right_motor'],
-                                        velocities[1], vrep.simx_opmode_oneshot)
+        vlib.set_joint_velocity(
+            self._client, self._motor_handles[0], velocities[0])
+        vlib.set_joint_velocity(
+            self._client, self._motor_handles[1], velocities[1])
 
     def get_encoders_rotations(self) -> np.ndarray:
         """Reads encoders ticks from robot.
@@ -88,13 +123,10 @@ class Robot(object):
         Returns:
             encoder_ticks: Current values of encoders ticks.
         """
-        res, packed_vec = vrep.simxReadStringStream(
-            self._client, self._stream_names['encoders'],
-            vrep.simx_opmode_oneshot)
-
-        if res == vrep.simx_return_ok:
-            self._encoder_ticks = vrep.simxUnpackFloats(packed_vec)
-            self._encoder_ticks = np.round(self._encoder_ticks, 3)
+        ticks = [vlib.read_float_stream(self._client, name)
+                 for name in self._encoder_signals]
+        if None not in ticks:
+            self._encoder_ticks = np.round(ticks, 3)
         return self._encoder_ticks
 
     def get_image(self) -> np.ndarray:
@@ -103,12 +135,7 @@ class Robot(object):
         Returns:
             img: Image received from robot
         """
-        res, resolution, image = vrep.simxGetVisionSensorImage(
-            self._client, self._object_handlers['camera'], False,
-            vrep.simx_opmode_oneshot)
-        img = np.array(image, dtype=np.uint8)
-        img.resize([resolution[1], resolution[0], 3])
-        return img
+        return vlib.get_image(self._client, self._camera_handle)
 
     def get_proximity_values(self) -> np.ndarray:
         """Reads proximity sensors values from robot.
@@ -116,15 +143,14 @@ class Robot(object):
         Returns:
             proximity_sensor_values: Array of proximity sensor values.
         """
-        res, packed_vec = vrep.simxReadStringStream(
-            self._client, self._stream_names['proximity_sensor'],
-            vrep.simx_opmode_oneshot)
-
-        if res == vrep.simx_return_ok:
-            self._proximity_sensor_values = vrep.simxUnpackFloats(packed_vec)
-            self._proximity_sensor_values = np.round(
-                self._proximity_sensor_values, 3)
-        return self._proximity_sensor_values
+        for i in range(self.nb_proximity_sensor):
+            dist = vlib.read_proximity_sensor(
+                self._client, self._ultrasonic_handles[i])
+            if dist == -1.0:
+                self._ultrasonic_values[i - 1] = self.ultrasonic_sensor_bound[1]
+            else:
+                self._ultrasonic_values[i - 1] = dist
+        return self._ultrasonic_values
 
     def get_accelerometer_values(self) -> np.ndarray:
         """Reads accelerometer values from robot.
@@ -132,14 +158,9 @@ class Robot(object):
         Returns:
             accelerometer_values: Array of values received from accelerometer.
         """
-        res, packed_vec = vrep.simxReadStringStream(
-            self._client, self._stream_names['accelerometer'],
-            vrep.simx_opmode_oneshot)
-
-        if res == vrep.simx_return_ok:
-            self._accelerometer_values = vrep.simxUnpackFloats(packed_vec)
-            self._accelerometer_values = np.asarray(self._accelerometer_values)
-
+        value = vlib.read_string_stream(self._client, self._imu_signals[0])
+        if value is not None and value.shape != (0,):
+            self._accelerometer_values = np.round(value, 6)
         return self._accelerometer_values
 
     def get_gyroscope_values(self) -> np.ndarray:
@@ -148,13 +169,9 @@ class Robot(object):
         Returns:
             gyroscope_values: Array of values received from gyroscope.
         """
-        res, packed_vec = vrep.simxReadStringStream(
-            self._client, self._stream_names['gyroscope'],
-            vrep.simx_opmode_oneshot)
-
-        if res == vrep.simx_return_ok:
-            self._gyroscope_values = vrep.simxUnpackFloats(packed_vec)
-            self._gyroscope_values = np.asarray(self._gyroscope_values)
+        value = vlib.read_string_stream(self._client, self._imu_signals[1])
+        if value is not None and value.shape != (0,):
+            self._gyroscope_values = np.round(value, 6)
         return self._gyroscope_values
 
     def get_velocities(self) -> np.ndarray:
@@ -170,7 +187,7 @@ class Robot(object):
         linear_velocity = np.sum(wheels_velocities) * radius / 2.0
         angular_velocity = radius * np.diff(wheels_velocities) / self.body_width
         velocities = np.array([linear_velocity, angular_velocity],
-                              dtype=np.float)
+                              dtype=np.float32)
 
         return np.round(velocities, 3)
 
@@ -180,13 +197,10 @@ class Robot(object):
         Returns:
             pose: Pose array containing x,y and yaw.
         """
-        _, pos = vrep.simxGetObjectPosition(
-            self._client, self._object_handlers['robot'], -1,
-            vrep.simx_opmode_oneshot)
+        position = vlib.get_object_position(self._client, self._robot_handle)
+        rotation = vlib.get_object_orientation(self._client, self._robot_handle)
+        return np.array([position[0], position[1], rotation[1]])
 
-        _, rot = vrep.simxGetObjectOrientation(
-            self._client, self._object_handlers['robot'], -1,
-            vrep.simx_opmode_oneshot)
-
-        pose = np.round(pos[0:2] + [rot[2]], 3)
-        return pose
+    @property
+    def robot_handle(self):
+        return self._robot_handle
