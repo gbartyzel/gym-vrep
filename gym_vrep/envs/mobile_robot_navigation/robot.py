@@ -3,7 +3,6 @@ from typing import NoReturn
 import numpy as np
 
 import gym_vrep.envs.vrep.vrep_lib as vlib
-from gym_vrep.envs.vrep import vrep
 
 
 class Robot(object):
@@ -48,9 +47,9 @@ class Robot(object):
         self._initialize()
 
     def _initialize(self) -> NoReturn:
-        """A method that reset robot model.  It is zeroing all class variables
-        and also reinitialize handlers for newly loaded robot model into the
-        environment.
+        """A method that initialize robot model.  It is zeroing all class
+        variables and also reinitialize handlers for newly loaded robot model
+        into the environment.
 
         """
         self._initialize_robot_handle()
@@ -62,18 +61,25 @@ class Robot(object):
             self._initialize_camera()
 
     def _initialize_robot_handle(self):
+        """Initialize handle of robot body and also position and orientation
+        stream.
+        """
         self._robot_handle = vlib.get_object_handle(self._client, 'smartBot')
         vlib.get_object_position(self._client, self._robot_handle, stream=True)
         vlib.get_object_orientation(self._client, self._robot_handle,
                                     stream=True)
 
     def _initialize_motors(self):
+        """Initialize handles of the motors.
+        """
         self._motor_handles[0] = vlib.get_object_handle(self._client,
                                                         'smartBot_leftMotor')
         self._motor_handles[1] = vlib.get_object_handle(self._client,
                                                         'smartBot_rightMotor')
 
     def _initialize_ultrasonic(self):
+        """Initialize handles of the ultrasonic sensors.
+        """
         self._ultrasonic_values = 2 * np.ones(5)
         for i in range(self.nb_proximity_sensor):
             name = 'smartBot_ultrasonicSensor{}'.format(i + 1)
@@ -82,16 +88,22 @@ class Robot(object):
             self._ultrasonic_handles[i] = object_handle
 
     def _initialize_camera(self):
+        """Initialize handle of the camera.
+        """
         object_handle = vlib.get_object_handle(self._client, 'smartBotCamera')
         vlib.read_proximity_sensor(self._client, object_handle, True)
         self._camera_handle = object_handle
 
     def _initialize_encoders_stream(self):
+        """Initialize encoders streams.
+        """
         self._encoder_ticks = np.zeros(2)
         for name in self._encoder_signals:
             vlib.read_float_stream(self._client, name, True)
 
     def _initialize_imu_stream(self):
+        """Initialize IMU streams.
+        """
         self._gyroscope_values = np.zeros(3)
         self._accelerometer_values = np.zeros(3)
         for name in self._imu_signals:
@@ -202,5 +214,5 @@ class Robot(object):
         return np.array([position[0], position[1], rotation[1]])
 
     @property
-    def robot_handle(self):
+    def robot_handle(self) -> int:
         return self._robot_handle

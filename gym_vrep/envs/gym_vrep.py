@@ -53,7 +53,7 @@ class VrepEnv(gym.Env):
         """A method that run V-REP in synchronous mode.
         Adding flag '-h' to 'vrep.sh' runs simulation in headless mode.
 
-        Returns: Remote API client ID
+        Returns: ID of the client
 
         """
         cmd = [
@@ -74,7 +74,7 @@ class VrepEnv(gym.Env):
 
         """
         vlib.set_hierarchy_visibility(self._client, False)
-        vlib.set_browser_visbility(self._client, False)
+        vlib.set_browser_visibility(self._client, False)
         vlib.set_console_visibility(self._client, False)
 
     def _set_start_pose(self, object_handle: int, pose: np.ndarray) -> NoReturn:
@@ -100,13 +100,11 @@ class VrepEnv(gym.Env):
         raise NotImplementedError
 
     def reset(self) -> Any:
-        """Resets simulation to initial conditions.
-        """
+        """Resets simulation to initial conditions."""
         raise NotImplementedError
 
     def close(self) -> NoReturn:
-        """A method that cleanly closes environment.
-        """
+        """A method that cleanly closes environment."""
         vlib.disconnect(self._client)
         parent = psutil.Process(self._process.pid)
         for p in parent.children(recursive=True):
