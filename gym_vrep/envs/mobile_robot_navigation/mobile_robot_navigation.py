@@ -83,7 +83,6 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         self._goal = None
         self._goal_threshold = 0.05
         self._collision_dist = 0.05
-        self._prev_distance = 0.0
         self._reward_factor = 10
 
         self._robot = Robot(self._client, self._dt, self.enable_vision)
@@ -104,13 +103,13 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
 
         if self.enable_vision:
             self.observation_space = spaces.Dict(dict(
-                image=spaces.Box(low=0, high=255, shape=(640, 480, 3),
-                                 dtype=np.uint8),
+                image=spaces.Box(
+                    low=0, high=255, shape=(640, 480, 3), dtype=np.uint8),
                 scalars=spaces.Box(low=low, high=high, dtype=np.float32),
             ))
         else:
-            self.observation_space = spaces.Box(low=low, high=high,
-                                                dtype=np.float32)
+            self.observation_space = spaces.Box(
+                low=low, high=high, dtype=np.float32)
 
     def step(self, action: np.ndarray) -> Tuple[
         np.ndarray, float, bool, Dict[str, bool]]:
@@ -134,7 +133,9 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         vlib.trigger_simulation_step(self._client)
 
         state = self._get_observation()
-        reward, done, info = self._compute_reward(state)
+
+        reward, done, info = self._compute_reward(
+            state['scalars'] if self.enable_vision else state)
 
         return state, reward, done, info
 
@@ -149,7 +150,6 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         print('Current goal: {}'.format(self._goal))
         vlib.stop_simulation(self._client)
 
-        # self._robot.reset()
         self._set_start_pose(self._robot.robot_handle, start_pose)
         self._navigation.reset(np.append(start_pose[0:3], start_pose[3:]))
 
@@ -158,7 +158,6 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         state = self._get_observation()
         vlib.trigger_simulation_step(self._client)
 
-        self._prev_distance = state[5]
         return state
 
     def _compute_reward(self, state: np.ndarray) -> Tuple[
@@ -196,7 +195,6 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
             info = {'is_success': True}
             done = True
 
-        self._prev_distance = state[5]
         return reward, done, info
 
     def _get_observation(self) -> np.ndarray:
@@ -216,7 +214,7 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
 
         if self.enable_vision:
             image = self._robot.get_image()
-            state = {'image': image, 'scalars': polar_coordinates}
+            state = {'image': image, 'scalars': state}
 
         return state
 

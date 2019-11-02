@@ -90,8 +90,8 @@ class Robot(object):
     def _initialize_camera(self):
         """Initialize handle of the camera.
         """
-        object_handle = vlib.get_object_handle(self._client, 'smartBotCamera')
-        vlib.read_proximity_sensor(self._client, object_handle, True)
+        object_handle = vlib.get_object_handle(self._client, 'smartBot_camera')
+        vlib.get_image(self._client, object_handle, True)
         self._camera_handle = object_handle
 
     def _initialize_encoders_stream(self):

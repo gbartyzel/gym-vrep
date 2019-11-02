@@ -186,8 +186,7 @@ def get_object_handle(client: int, name: str) -> int:
     """
     res, object_handle = vrep.simxGetObjectHandle(client, name,
                                                   vrep.simx_opmode_blocking)
-    assert (res == vrep.simx_return_ok or
-            res == vrep.simx_return_novalue_flag), \
+    assert res == vrep.simx_return_ok, \
         'Could not obtain handle of {}! Error code: {}'.format(name, res)
     return object_handle
 
@@ -206,8 +205,7 @@ def set_object_position(client: int,
     assert len(position) == 3, 'Wrong size of the position array!'
     res = vrep.simxSetObjectPosition(
         client, object_handle, -1, position, vrep.simx_opmode_blocking)
-    assert (res == vrep.simx_return_ok or
-            res == vrep.simx_return_novalue_flag), \
+    assert res == vrep.simx_return_ok, \
         'Could not set model position! Error code: {}'.format(res)
 
 
@@ -225,8 +223,7 @@ def set_object_orientation(client: int,
     assert len(orientation) == 3, 'Wrong size of the orientation array!'
     res = vrep.simxSetObjectOrientation(
         client, object_handle, -1, orientation, vrep.simx_opmode_blocking)
-    assert (res == vrep.simx_return_ok or
-            res == vrep.simx_return_novalue_flag), \
+    assert res == vrep.simx_return_ok, \
         'Could not set model orientation! Error code: {}'.format(res)
 
 
@@ -261,7 +258,7 @@ def read_proximity_sensor(client: int,
     """
     res, state, points, _, _ = vrep.simxReadProximitySensor(
         client, object_handle, _switch_streaming_buffer(stream))
-    if res == vrep.simx_return_ok or res == vrep.simx_return_novalue_flag:
+    if res == vrep.simx_return_ok:
         if state:
             dist = np.sqrt(points[0] ** 2 + points[1] ** 2 + points[2] ** 2)
             return np.round(dist, 3)
@@ -285,7 +282,7 @@ def read_string_stream(client: int,
     """
     res, value = vrep.simxReadStringStream(client, name,
                                            _switch_streaming_buffer(stream))
-    if res == vrep.simx_return_ok or res == vrep.simx_return_novalue_flag:
+    if res == vrep.simx_return_ok:
         return np.asarray(vrep.simxUnpackFloats(value))
     print('Could not read string stream {}! Error code: {}'.format(name, res))
     return None
@@ -306,7 +303,7 @@ def read_float_stream(client: int,
     """
     res, value = vrep.simxGetFloatSignal(client, name,
                                          _switch_streaming_buffer(stream))
-    if res == vrep.simx_return_ok or res == vrep.simx_return_novalue_flag:
+    if res == vrep.simx_return_ok:
         return value
     print('Could not read float stream {}! Error code: {}'.format(name, res))
     return None
@@ -327,7 +324,7 @@ def get_image(client: int,
     """
     res, resolution, image = vrep.simxGetVisionSensorImage(
         client, object_handle, False, _switch_streaming_buffer(stream))
-    if res == vrep.simx_return_ok or res == vrep.simx_return_novalue_flag:
+    if res == vrep.simx_return_ok:
         img = np.array(image, dtype=np.uint8)
         img.resize([resolution[1], resolution[0], 3])
         return img
@@ -352,7 +349,7 @@ def get_object_position(client: int,
     """
     res, value = vrep.simxGetObjectPosition(
         client, object_handle, reference, _switch_streaming_buffer(stream))
-    if res == vrep.simx_return_ok or res == vrep.simx_return_novalue_flag:
+    if res == vrep.simx_return_ok:
         return np.round(value, 3)
     print('Could not read object position! Error code: {}'.format(res))
     return None
@@ -375,7 +372,7 @@ def get_object_orientation(client: int,
     """
     res, value = vrep.simxGetObjectOrientation(
         client, object_handle, reference, _switch_streaming_buffer(stream))
-    if res == vrep.simx_return_ok or res == vrep.simx_return_novalue_flag:
+    if res == vrep.simx_return_ok:
         return np.round(value, 3)
     print('Could not read object orientation! Error code: {}'.format(res))
     return None
