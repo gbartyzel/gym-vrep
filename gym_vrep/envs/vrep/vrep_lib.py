@@ -57,6 +57,7 @@ def stop_simulation(client: int):
 
     """
     vrep.simxStopSimulation(client, vrep.simx_opmode_blocking)
+    trigger_simulation_step(client)
 
 
 def trigger_simulation_step(client: int):

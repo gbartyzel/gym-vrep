@@ -26,7 +26,7 @@ Environment state space description:
 
 Environment reward:
 
-![equation](https://latex.codecogs.com/gif.latex?R%20%3D%20V_L%5Ccdot%20%5Ccos%5Ctheta%5Ccdot%20%5Cmin%28D%29)
+![equation](https://latex.codecogs.com/gif.latex?%5Clarge%20R%20%3D%20%5Cleft%5Cbegin%7BBmatrix%7D%201%20%26%20%2Cd%20%3C%20d_%7Bth%7D%5C%5C%20-1%20%26%20%2C%5Cexists%7BD%7D%3Cd_%7Bcollision%7D%5C%5C%20-0.1%20%26%20%2C%5Cexists%7BD%7D%20%3C%20d_%7Bproxth%7D%5C%5C%20V_L%5Ccdot%5Ccos%7B%5Ctheta%7D%20%26%20%2Cotherwise%20%5Cend%7Bmatrix%7D%5Cright.)
 
 Where
 
@@ -34,8 +34,20 @@ Where
 
 ![equation](https://latex.codecogs.com/gif.latex?%5Ctheta)- heading angle of the mobile robot
 
-![equation](https://latex.codecogs.com/gif.latex?D) - vector od distances read from proximity 
-sensors
+![equation](https://latex.codecogs.com/gif.latex?D) - vector od distances
+ read from ultrasonic sensors
+ 
+![equation](https://latex.codecogs.com/gif.latex?%5Clarge%20d) - distance
+ between robot and target position
+ 
+![equation](https://latex.codecogs.com/gif.latex?%5Clarge%20d_%7Bth%7D
+) - threshold distance between robot and target position
+
+![equation](https://latex.codecogs.com/gif.latex?%5Clarge%20d_%7Bcollision%7D
+) - distance when collision occurs
+
+![equation](https://latex.codecogs.com/gif.latex?%5Clarge%20d_%7Bproxth%7D
+) - safety distance threshold
 
     
 ### Installation

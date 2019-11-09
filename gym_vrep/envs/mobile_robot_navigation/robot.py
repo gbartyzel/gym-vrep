@@ -15,7 +15,7 @@ class Robot(object):
     wheel_diameter = 0.06
     body_width = 0.156
     nb_proximity_sensor = 5
-    velocity_limit = np.array([0.0, 10.0])
+    velocity_limit = np.array([0.0, 15.0])
     ultrasonic_sensor_bound = np.array([0.02, 2.0])
 
     def __init__(self, client: int, dt: float, enable_vision: bool):
@@ -124,10 +124,9 @@ class Robot(object):
         velocities = np.clip(velocities, self.velocity_limit[0],
                              self.velocity_limit[1])
 
-        vlib.set_joint_velocity(
-            self._client, self._motor_handles[0], velocities[0])
-        vlib.set_joint_velocity(
-            self._client, self._motor_handles[1], velocities[1])
+        for i in range(2):
+            vlib.set_joint_velocity(
+                self._client, self._motor_handles[i], velocities[i])
 
     def get_encoders_rotations(self) -> np.ndarray:
         """Reads encoders ticks from robot.
@@ -211,7 +210,7 @@ class Robot(object):
         """
         position = vlib.get_object_position(self._client, self._robot_handle)
         rotation = vlib.get_object_orientation(self._client, self._robot_handle)
-        return np.array([position[0], position[1], rotation[1]])
+        return np.array([position[0], position[1], rotation[2]])
 
     @property
     def robot_handle(self) -> int:

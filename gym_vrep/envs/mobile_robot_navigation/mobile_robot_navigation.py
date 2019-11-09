@@ -83,7 +83,7 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         self._goal = None
         self._goal_threshold = 0.05
         self._collision_dist = 0.05
-        self._reward_factor = 10
+        self._time_length = 3
 
         self._robot = Robot(self._client, self._dt, self.enable_vision)
         self._navigation = self.navigation_type(self._robot, dt)
@@ -93,8 +93,7 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         max_angular_vel = radius / self._robot.body_width * np.diff(
             self._robot.velocity_limit)
 
-        self.action_space = spaces.Box(self._robot.velocity_limit[0],
-                                       self._robot.velocity_limit[1],
+        self.action_space = spaces.Box(*self._robot.velocity_limit,
                                        shape=self._robot.velocity_limit.shape,
                                        dtype='float32')
 
@@ -110,6 +109,8 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         else:
             self.observation_space = spaces.Box(
                 low=low, high=high, dtype=np.float32)
+
+        self._state = np.zeros(low.shape)
 
     def step(self, action: np.ndarray) -> Tuple[
         np.ndarray, float, bool, Dict[str, bool]]:
@@ -137,7 +138,13 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         reward, done, info = self._compute_reward(
             state['scalars'] if self.enable_vision else state)
 
-        return state, reward, done, info
+        self._state = np.roll(self._state, -1, 0)
+        if isinstance(state, dict):
+            self._state[0] = state['scalars']
+        else:
+            self._state[0] = state
+
+        return self._state, reward, done, info
 
     def reset(self) -> np.ndarray:
         """Resets environment to initial state.
@@ -147,18 +154,22 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
             angular velocities.
         """
         self._goal, start_pose = self._sample_start_parameters()
-        print('Current goal: {}'.format(self._goal))
+        print('Start position: {}, Current goal: {}'.format(
+            np.round(start_pose[0:2], 2), self._goal))
         vlib.stop_simulation(self._client)
+        self._start()
 
         self._set_start_pose(self._robot.robot_handle, start_pose)
-        self._navigation.reset(np.append(start_pose[0:3], start_pose[3:]))
 
-        self._start()
-        vlib.trigger_simulation_step(self._client)
+        self._navigation.reset(np.append(start_pose[0:3], start_pose[3:]))
         state = self._get_observation()
         vlib.trigger_simulation_step(self._client)
 
-        return state
+        if isinstance(state, dict):
+            self._state = np.stack((state['scalars'], ) * self._time_length)
+        else:
+            self._state = np.stack((state, ) * self._time_length)
+        return self._state
 
     def _compute_reward(self, state: np.ndarray) -> Tuple[
         float, bool, Dict[str, bool]]:
@@ -180,8 +191,7 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         info = {'is_success': False}
 
         reward_navigation = state[7] * np.cos(state[6])
-        reward_avoidance = 0.2 * np.tanh((np.min(state[0:5]) - 1.0))
-        reward = reward_navigation + reward_avoidance
+        reward = reward_navigation
 
         if (state[0:5] < 0.1).any():
             reward = -0.1
@@ -236,7 +246,7 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
 
         low_boundaries = np.concatenate(
             (proximity_sensor, polar_coordinates, velocities))
-        return low_boundaries
+        return np.stack((low_boundaries, ) * self._time_length)
 
     def _get_observation_high(self, max_linear_vel: float,
                               max_angular_vel: float) -> np.ndarray:
@@ -259,7 +269,7 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
 
         high_boundaries = np.concatenate(
             (proximity_sensor, polar_coordinates, velocities))
-        return high_boundaries
+        return np.stack((high_boundaries, ) * self._time_length)
 
     def _sample_start_parameters(self) -> Tuple[np.ndarray, np.ndarray]:
         """A method that generates mobile robot start pose and desired goal/

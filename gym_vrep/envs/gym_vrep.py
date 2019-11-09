@@ -89,6 +89,7 @@ class VrepEnv(gym.Env):
         assert (np.shape(pose)[0] == 6), 'Wrong size of the pose array!'
         vlib.set_object_position(self._client, object_handle, pose[:3])
         vlib.set_object_orientation(self._client, object_handle, pose[3:])
+        vlib.trigger_simulation_step(self._client)
 
     def step(self, action: np.ndarray) -> Any:
         """A method that perform single simulation step.
