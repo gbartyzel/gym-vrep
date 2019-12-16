@@ -58,6 +58,7 @@ Basic requirements:
 * Python 3.6+
 * Ubuntu 16.04 / Arch Linux
 * OpenAI gym
+* [PyRep](https://github.com/Souphis/PyRep)
 
 
 #### V-REP
