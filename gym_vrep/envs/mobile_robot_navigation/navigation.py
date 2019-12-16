@@ -5,14 +5,14 @@ from typing import Tuple
 
 import numpy as np
 
-from gym_vrep.envs.mobile_robot_navigation.robot import Robot
+from gym_vrep.envs.mobile_robot_navigation.robot import SmartBot
 
 
 class Base(metaclass=abc.ABCMeta):
     """A superclass for navigation tasks.
     """
 
-    def __init__(self, robot: Robot, dt):
+    def __init__(self, robot: SmartBot, dt):
         """A constructor of superclass
 
         Args:
@@ -21,8 +21,6 @@ class Base(metaclass=abc.ABCMeta):
         """
         self._robot = robot
         self._target_position = None
-        self._wheel_radius = self._robot.wheel_diameter / 2.0
-        self._body_width = self._robot.body_width
         self._dt = dt
 
         self._pose = np.zeros(3)
@@ -72,7 +70,7 @@ class Ideal(Base):
 
     """
 
-    def __init__(self, robot: Robot, dt: float):
+    def __init__(self, robot: SmartBot, dt: float):
         """A constructor of class.
 
         Args:
@@ -90,16 +88,16 @@ class Ideal(Base):
         Returns:
             polar_coordinates: A polar coordinates of mobile robot.
         """
-        position = np.round(self._robot.get_pose(), 3)
-        position[2] = self._angle_correction(position[2])
+        pose = np.round(self._robot.get_2d_pose(), 3)
+        pose[2] = self._angle_correction(pose[2])
 
-        distance = np.linalg.norm(position[0:2] - goal)
+        distance = np.linalg.norm(pose[0:2] - goal)
 
-        theta = np.arctan2(goal[1] - position[1], goal[0] - position[0])
+        theta = np.arctan2(goal[1] - pose[1], goal[0] - pose[0])
 
         theta = self._angle_correction(theta)
 
-        heading_angle = self._angle_correction(theta - position[2])
+        heading_angle = self._angle_correction(theta - pose[2])
 
         polar_coordinates = np.round(np.array([distance, heading_angle]), 3)
         return polar_coordinates
@@ -119,7 +117,7 @@ class Odometry(Base):
 
     """
 
-    def __init__(self, robot: Robot, dt: float):
+    def __init__(self, robot: SmartBot, dt: float):
         """A constructor of class.
 
         Args:
@@ -169,12 +167,13 @@ class Odometry(Base):
             delta_path: Delta of traveled path by robot
             delta_beta: Delta of rotation done by robot
         """
-        wheels_paths = self._robot.get_encoders_rotations() * self._wheel_radius
+        wheels_paths = self._robot.encoder_ticks * self._robot.wheel_radius
 
         delta_path = np.round(np.sum(wheels_paths) / 2, 3)
         self._sum_path += delta_path
 
-        delta_beta = (wheels_paths[1] - wheels_paths[0]) / self._body_width
+        delta_beta = (wheels_paths[1] - wheels_paths[0]) \
+                     / self._robot.wheel_distance
         delta_beta = np.round(delta_beta, 3)
 
         return delta_path, delta_beta
@@ -195,7 +194,7 @@ class Gyrodometry(Odometry):
 
     """
 
-    def __init__(self, robot: Robot, dt: float):
+    def __init__(self, robot: SmartBot, dt: float):
         """A constructor of class.
 
         Args:
@@ -244,7 +243,7 @@ class Gyrodometry(Odometry):
             delta_beta: Delta of rotation done by robot
 
         """
-        current_angular_velocity = self._robot.get_gyroscope_values()
+        current_angular_velocity = self._robot.angular_velocities
         delta_beta = np.round(current_angular_velocity * self._dt, 3)
         self._previous_angular_velocity = current_angular_velocity
 

@@ -7,4 +7,4 @@ from gym_vrep.envs.mobile_robot_navigation.navigation import Ideal
 from gym_vrep.envs.mobile_robot_navigation.navigation import Odometry
 from gym_vrep.envs.mobile_robot_navigation.navigation import Gyrodometry
 
-from gym_vrep.envs.mobile_robot_navigation.robot import Robot
+from gym_vrep.envs.mobile_robot_navigation.robot import SmartBot

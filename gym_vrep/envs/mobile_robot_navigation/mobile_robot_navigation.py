@@ -4,12 +4,11 @@ from typing import Tuple
 import numpy as np
 from gym import spaces
 
-import gym_vrep.envs.vrep.vrep_lib as vlib
 from gym_vrep.envs import gym_vrep
 from gym_vrep.envs.mobile_robot_navigation.navigation import Gyrodometry
 from gym_vrep.envs.mobile_robot_navigation.navigation import Ideal
 from gym_vrep.envs.mobile_robot_navigation.navigation import Odometry
-from gym_vrep.envs.mobile_robot_navigation.robot import Robot
+from gym_vrep.envs.mobile_robot_navigation.robot import SmartBot
 
 NAVIGATION_TYPE = {
     'Ideal': Ideal,
@@ -18,10 +17,10 @@ NAVIGATION_TYPE = {
 }
 
 SPAWN_LIST = np.array([
-    [-2.0, -2.0, 0.0405],
-    [2.0, -2.0, 0.0405],
-    [-2.0, 2.0, 0.0405],
-    [2.0, 2.0, 0.0405]
+    [-2.0, -2.0],
+    [2.0, -2.0],
+    [-2.0, 2.0],
+    [2.0, 2.0]
 ])
 
 GOAL_LIST = np.array([
@@ -31,19 +30,7 @@ GOAL_LIST = np.array([
     [-2.0, -2.0]
 ])
 
-
-def _choose_model(enable_vision: bool) -> str:
-    """Switch between model with and without camera
-
-    Args:
-        enable_vision: Flag that enable model with camera
-
-    Returns: Name of the model to be loaded
-
-    """
-    if enable_vision:
-        return 'mobile_robot_with_camera'
-    return 'mobile_robot'
+ENV_INFO = Tuple[np.ndarray, float, bool, Dict[str, bool]]
 
 
 class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
@@ -74,24 +61,23 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         Args:
             dt: Delta time of simulation.
         """
-        scene = 'mobile_robot_navigation_room'
         super(MobileRobotNavigationEnv, self).__init__(
-            scene=scene,
-            model=_choose_model(self.enable_vision),
+            scene='mobile_robot_navigation_room.ttt',
             dt=dt)
 
         self._goal = None
-        self._goal_threshold = 0.05
+        self._goal_threshold = 0.02
         self._collision_dist = 0.05
         self._time_length = 3
 
-        self._robot = Robot(self._client, self._dt, self.enable_vision)
+        self._robot = SmartBot(enable_vision=self.enable_vision)
         self._navigation = self.navigation_type(self._robot, dt)
 
-        radius = self._robot.wheel_diameter / 2.0
-        max_linear_vel = radius * 2 * self._robot.velocity_limit[1] / 2
-        max_angular_vel = radius / self._robot.body_width * np.diff(
-            self._robot.velocity_limit)
+        max_linear_vel = self._robot.wheel_radius * 2 \
+                         * self._robot.velocity_limit[1] / 2
+        max_angular_vel = self._robot.wheel_radius \
+                          / self._robot.wheel_distance \
+                          * np.diff(self._robot.velocity_limit)
 
         self.action_space = spaces.Box(*self._robot.velocity_limit,
                                        shape=self._robot.velocity_limit.shape,
@@ -112,8 +98,9 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
 
         self._state = np.zeros(low.shape)
 
-    def step(self, action: np.ndarray) -> Tuple[
-        np.ndarray, float, bool, Dict[str, bool]]:
+        self.reset()
+
+    def step(self, action: np.ndarray) -> ENV_INFO:
         """Performs simulation step by applying given action.
 
         Args:
@@ -130,8 +117,8 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
         Raises:
             ValueError: Dimension of input motors velocities is incorrect!
         """
-        self._robot.set_motor_velocities(action)
-        vlib.trigger_simulation_step(self._client)
+        self._robot.set_joint_target_velocities(action)
+        self._pr.step()
 
         state = self._get_observation()
 
@@ -153,22 +140,22 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
             state: The sensors readings, polar coordinates, linear and
             angular velocities.
         """
+
+        self._pr.set_configuration_tree(self._robot.initial_configuration)
+        self._robot.set_motor_locked_at_zero_velocity(True)
+        self._robot.set_control_loop_enabled(False)
+
         self._goal, start_pose = self._sample_start_parameters()
-        print('Start position: {}, Current goal: {}'.format(
-            np.round(start_pose[0:2], 2), self._goal))
-        vlib.stop_simulation(self._client)
-        self._start()
+        self._robot.set_2d_pose(start_pose)
 
-        self._set_start_pose(self._robot.robot_handle, start_pose)
-
-        self._navigation.reset(np.append(start_pose[0:3], start_pose[3:]))
+        self._navigation.reset(start_pose)
         state = self._get_observation()
-        vlib.trigger_simulation_step(self._client)
+        self._pr.step()
 
         if isinstance(state, dict):
-            self._state = np.stack((state['scalars'], ) * self._time_length)
+            self._state = np.stack((state['scalars'],) * self._time_length)
         else:
-            self._state = np.stack((state, ) * self._time_length)
+            self._state = np.stack((state,) * self._time_length)
         return self._state
 
     def _compute_reward(self, state: np.ndarray) -> Tuple[
@@ -215,15 +202,14 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
             velocities.
 
         """
-        proximity_sensor_distance = self._robot.get_proximity_values()
+        proximity_sensor_distance = self._robot.ultrasonic_distances
         polar_coordinates = self._navigation.compute_position(self._goal)
-        velocities = self._robot.get_velocities()
-
+        velocities = self._robot.get_base_velocities()
         state = np.concatenate(
             (proximity_sensor_distance, polar_coordinates, velocities))
 
         if self.enable_vision:
-            image = self._robot.get_image()
+            image = self._robot.image
             state = {'image': image, 'scalars': state}
 
         return state
@@ -246,9 +232,10 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
 
         low_boundaries = np.concatenate(
             (proximity_sensor, polar_coordinates, velocities))
-        return np.stack((low_boundaries, ) * self._time_length)
+        return np.stack((low_boundaries,) * self._time_length)
 
-    def _get_observation_high(self, max_linear_vel: float,
+    def _get_observation_high(self,
+                              max_linear_vel: float,
                               max_angular_vel: float) -> np.ndarray:
         """Gets highest values of observation space
 
@@ -269,7 +256,7 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
 
         high_boundaries = np.concatenate(
             (proximity_sensor, polar_coordinates, velocities))
-        return np.stack((high_boundaries, ) * self._time_length)
+        return np.stack((high_boundaries,) * self._time_length)
 
     def _sample_start_parameters(self) -> Tuple[np.ndarray, np.ndarray]:
         """A method that generates mobile robot start pose and desired goal/
@@ -297,11 +284,10 @@ class MobileRobotNavigationEnv(gym_vrep.VrepEnv):
             pose: Generated start pose of mobile robot
         """
         position = np.take(SPAWN_LIST, idx, axis=0)
-        position[0:2] += np.random.uniform(-0.1, 0.1, (2,))
-        orientation = np.zeros(3)
-        orientation[2] = np.rad2deg(np.random.uniform(-np.pi, np.pi))
+        position += np.random.uniform(-0.1, 0.1, (2,))
+        orientation = np.rad2deg(np.random.uniform(-np.pi, np.pi))
 
-        pose = np.concatenate((position, orientation))
+        pose = np.concatenate((position, np.array([orientation])))
         return pose
 
     @staticmethod
