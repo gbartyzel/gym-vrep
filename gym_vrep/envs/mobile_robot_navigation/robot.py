@@ -25,8 +25,7 @@ class SmartBot(NonHolonomicBase):
         self._ultrasonic_sensors = [ProximitySensor(
             '{}_ultrasonic_sensor_{}'.format(self.get_name(), i + 1))
             for i in range(self.nb_proximity_sensor)]
-        for u in self._ultrasonic_sensors:
-            print(u.get_handle())
+        
         self._previous_joint_positions = self.get_joint_positions()
 
         self.initial_configuration = self.get_configuration_tree()
