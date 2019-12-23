@@ -8,7 +8,7 @@ from pyrep.sensors.gyroscope import Gyroscope
 
 class SmartBot(NonHolonomicBase):
     velocity_limit = np.array([0.0, 15.0])
-    nb_proximity_sensor = 5
+    nb_ultrasonic_sensor = 5
     ultrasonic_sensor_bound = np.array([0.02, 2.0])
 
     def __init__(self, count: int = 0, enable_vision: bool = False):
@@ -21,10 +21,10 @@ class SmartBot(NonHolonomicBase):
         self._accelerometer = Accelerometer(
             '{}_accelerometer'.format(self.get_name()))
 
-        self._ultrasonic_values = 2 * np.ones(5)
+        self._ultrasonic_values = 2 * np.ones(self.nb_ultrasonic_sensor)
         self._ultrasonic_sensors = [ProximitySensor(
             '{}_ultrasonic_sensor_{}'.format(self.get_name(), i + 1))
-            for i in range(self.nb_proximity_sensor)]
+            for i in range(self.nb_ultrasonic_sensor)]
         
         self._previous_joint_positions = self.get_joint_positions()
 
@@ -37,9 +37,8 @@ class SmartBot(NonHolonomicBase):
         Returns:
             proximity_sensor_values: Array of proximity sensor values.
         """
-        for i in range(self.nb_proximity_sensor):
+        for i in range(self.nb_ultrasonic_sensor):
             dist = self._ultrasonic_sensors[i].read()
-
             if dist == -1.0:
                 self._ultrasonic_values[i - 1] = self.ultrasonic_sensor_bound[1]
             else:
