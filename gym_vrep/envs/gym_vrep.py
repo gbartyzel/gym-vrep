@@ -4,6 +4,7 @@ from typing import NoReturn
 import gym
 from gym.utils import seeding
 from pyrep import PyRep
+from pyrep.backend import sim, simConst
 
 
 class VrepEnv(gym.Env):
@@ -34,6 +35,8 @@ class VrepEnv(gym.Env):
         self._pr = PyRep()
         self._launch_scene(scene, headless_mode)
         self._import_model(model)
+        if not headless_mode:
+            self._clear_gui()
         self._pr.set_simulation_timestep(dt)
         self._pr.start()
 
@@ -49,6 +52,12 @@ class VrepEnv(gym.Env):
             assert model in os.listdir(self._models_path)
             model_path = os.path.join(self._models_path, model)
             self._pr.import_model(model_path)
+
+    @staticmethod
+    def _clear_gui():
+        sim.simSetBoolParameter(simConst.sim_boolparam_browser_visible, False)
+        sim.simSetBoolParameter(simConst.sim_boolparam_hierarchy_visible, False)
+        sim.simSetBoolParameter(simConst.sim_boolparam_console_visible, False)
 
     def step(self, action):
         return NotImplementedError

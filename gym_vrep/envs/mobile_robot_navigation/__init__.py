@@ -2,9 +2,11 @@ from gym_vrep.envs.mobile_robot_navigation.mobile_robot_navigation import Naviga
 from gym_vrep.envs.mobile_robot_navigation.mobile_robot_navigation import VisionNavigationEnv
 from gym_vrep.envs.mobile_robot_navigation.mobile_robot_navigation import OdomNavigationEnv
 from gym_vrep.envs.mobile_robot_navigation.mobile_robot_navigation import GyroNavigationEnv
+from gym_vrep.envs.mobile_robot_navigation.mobile_robot_navigation import DynamicNavigationEnv
+from gym_vrep.envs.mobile_robot_navigation.mobile_robot_navigation import DynamicVisionNavigationEnv
 
-from gym_vrep.envs.mobile_robot_navigation.navigation import Ideal
-from gym_vrep.envs.mobile_robot_navigation.navigation import Odometry
-from gym_vrep.envs.mobile_robot_navigation.navigation import Gyrodometry
+from gym_vrep.envs.mobile_robot_navigation.navigation_algos import Ideal
+from gym_vrep.envs.mobile_robot_navigation.navigation_algos import Odometry
+from gym_vrep.envs.mobile_robot_navigation.navigation_algos import Gyrodometry
 
-from gym_vrep.envs.mobile_robot_navigation.robot import SmartBot
+from gym_vrep.envs.mobile_robot_navigation.robots.smartbot import SmartBot

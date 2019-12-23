@@ -8,10 +8,11 @@ from pyrep.backend import sim
 from pyrep.objects.dummy import Dummy
 
 from gym_vrep.envs import gym_vrep
-from gym_vrep.envs.mobile_robot_navigation.navigation import Gyrodometry
-from gym_vrep.envs.mobile_robot_navigation.navigation import Ideal
-from gym_vrep.envs.mobile_robot_navigation.navigation import Odometry
-from gym_vrep.envs.mobile_robot_navigation.robot import SmartBot
+from gym_vrep.envs.mobile_robot_navigation.navigation_algos import Gyrodometry
+from gym_vrep.envs.mobile_robot_navigation.navigation_algos import Ideal
+from gym_vrep.envs.mobile_robot_navigation.navigation_algos import Odometry
+from gym_vrep.envs.mobile_robot_navigation.robots import PioneerP3Dx
+from gym_vrep.envs.mobile_robot_navigation.robots import SmartBot
 
 NAVIGATION_TYPE = {
     'Ideal': Ideal,
@@ -43,13 +44,15 @@ ENV_TUPLE_WO_STATE = Tuple[float, bool, Dict[str, bool]]
 class NavigationEnv(gym_vrep.VrepEnv):
     """The gym environment for mobile robot navigation task.
 
-    Four variants of this environment are given:
+    Six variants of this environment are given:
     * Ideal: a position of mobile robot is received from simulation engine,
     * Odometry: a position o mobile robot is computed by encoders ticks,
     * Gyrodometry: a position of mobile robot is computed by encoders ticks and
     readings from gyroscope
-    * Visual: it's a ideal variant with camera in stace space instead of
+    * Vision: it's a ideal variant with camera in stace space instead of
     proximity sensors reading.
+    * Dynamic:
+    * DynamicVision
 
     The state space of this environment includes proximity sensors readings
     (or image from camera), polar coordinates of mobile robot, linear and
@@ -105,8 +108,6 @@ class NavigationEnv(gym_vrep.VrepEnv):
         else:
             self.observation_space = spaces.Box(
                 low=low, high=high, dtype=np.float32)
-
-        self.reset()
 
     def step(self, action: np.ndarray) -> ENV_TUPLE:
         """Performs simulation step by applying given action.
@@ -319,18 +320,35 @@ class GyroNavigationEnv(NavigationEnv):
 
 
 class VisionNavigationEnv(NavigationEnv):
-    """Visual variant of environment.
+    """Vision feedback variant of environment.
     """
     enable_vision = True
 
 
 class DynamicNavigationEnv(NavigationEnv):
+    """Environment variant with moving robots as dynamic obstacles.In this
+    environment robot has additional ultrasonic sensors in the back.
+    """
     def __init__(self, dt: float = 0.05):
         SmartBot.nb_ultrasonic_sensor = 10
         super(DynamicNavigationEnv, self).__init__('dynamic_room.ttt', dt)
+        self._dummy_robots = [PioneerP3Dx(count=i) for i in range(4)]
+        self._initials_robots_config = [robot.get_configuration_tree()
+                                        for robot in self._dummy_robots]
+
+    def reset(self) -> Union[np.ndarray, Dict[str, np.ndarray]]:
+        for conf in self._initials_robots_config:
+            self._pr.set_configuration_tree(conf)
+        for robot in self._dummy_robots:
+            pose = robot.get_2d_pose()
+            pose[2] += np.random.uniform(-np.pi / 2.0, np.pi / 2.0)
+            robot.set_2d_pose(pose)
+        return super().reset()
 
 
-class DynamicVisionNavigationEnv(NavigationEnv):
-    def __init__(self, dt: float = 0.05):
-        self.enable_vision = True
-        super(DynamicVisionNavigationEnv, self).__init__('dynamic_room.ttt', dt)
+class DynamicVisionNavigationEnv(DynamicNavigationEnv):
+    """Environment variant with moving robots as dynamic obstacles.In this
+    environment robot has additional ultrasonic sensors in the back and also
+    camera.
+    """
+    enable_vision = True
