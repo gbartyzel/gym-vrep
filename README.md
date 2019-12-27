@@ -76,5 +76,5 @@ Basic requirements:
 ```
 git clone https://github.com/Souphis/gym-vrep.git
 cd gym-vrep
-pip install -e .
+python3 setup.py install
 ```
