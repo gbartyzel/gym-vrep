@@ -134,7 +134,8 @@ class NavigationEnv(gym_vrep.VrepEnv):
 
         state = sclaras
         if self.enable_vision:
-            state = {'scalars': sclaras, 'image': self._robot.image}
+            state = {'scalars': sclaras,
+                     'image': (self._robot.image * 256.0).astype(np.uint8)}
         return state, reward, done, info
 
     def reset(self) -> Union[np.ndarray, Dict[str, np.ndarray]]:
@@ -157,7 +158,7 @@ class NavigationEnv(gym_vrep.VrepEnv):
         self._pr.step()
         if self.enable_vision:
             return {'scalars': self._get_scalar_observation(),
-                    'image': self._robot.image}
+                    'image': (self._robot.image * 256.0).astype(np.uint8)}
 
         return self._get_scalar_observation()
 
