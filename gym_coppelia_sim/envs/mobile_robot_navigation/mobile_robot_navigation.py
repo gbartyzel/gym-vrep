@@ -7,32 +7,22 @@ from gym import spaces
 from pyrep.backend import sim
 from pyrep.objects.dummy import Dummy
 
-from gym_vrep.envs import gym_vrep
-from gym_vrep.envs.mobile_robot_navigation.navigation_algos import Gyrodometry
-from gym_vrep.envs.mobile_robot_navigation.navigation_algos import Ideal
-from gym_vrep.envs.mobile_robot_navigation.navigation_algos import Odometry
-from gym_vrep.envs.mobile_robot_navigation.robots import PioneerP3Dx
-from gym_vrep.envs.mobile_robot_navigation.robots import SmartBot
+from gym_coppelia_sim.envs import gym_coppelia_sim
+from gym_coppelia_sim.envs.mobile_robot_navigation.navigation_algos import Gyrodometry
+from gym_coppelia_sim.envs.mobile_robot_navigation.navigation_algos import Ideal
+from gym_coppelia_sim.envs.mobile_robot_navigation.navigation_algos import Odometry
+from gym_coppelia_sim.envs.mobile_robot_navigation.robots import PioneerP3Dx
+from gym_coppelia_sim.envs.mobile_robot_navigation.robots import SmartBot
 
 NAVIGATION_TYPE = {
-    'Ideal': Ideal,
-    'Odometry': Odometry,
-    'Gyrodometry': Gyrodometry,
+    "Ideal": Ideal,
+    "Odometry": Odometry,
+    "Gyrodometry": Gyrodometry,
 }
 
-SPAWN_LIST = np.array([
-    [-2.0, -2.0],
-    [2.0, -2.0],
-    [-2.0, 2.0],
-    [2.0, 2.0]
-])
+SPAWN_LIST = np.array([[-2.0, -2.0], [2.0, -2.0], [-2.0, 2.0], [2.0, 2.0]])
 
-GOAL_LIST = np.array([
-    [2.0, 2.0],
-    [-2.0, 2.0],
-    [2.0, -2.0],
-    [-2.0, -2.0]
-])
+GOAL_LIST = np.array([[2.0, 2.0], [-2.0, 2.0], [2.0, -2.0], [-2.0, -2.0]])
 
 ENV_TUPLE = Tuple[
     Union[Dict[str, np.ndarray], np.ndarray], float, bool, Dict[str, bool]
@@ -41,7 +31,7 @@ ENV_TUPLE = Tuple[
 ENV_TUPLE_WO_STATE = Tuple[float, bool, Dict[str, bool]]
 
 
-class NavigationEnv(gym_vrep.VrepEnv):
+class NavigationEnv(gym_coppelia_sim.CoppeliaSimEnv):
     """The gym environment for mobile robot navigation task.
 
     Six variants of this environment are given:
@@ -61,53 +51,59 @@ class NavigationEnv(gym_vrep.VrepEnv):
     distance from nearest obstacle.
 
     """
-    metadata = {'render.modes': ['human']}
-    navigation_type = NAVIGATION_TYPE['Ideal']
+
+    metadata = {"render.modes": ["human"]}
+    navigation_type = NAVIGATION_TYPE["Ideal"]
     enable_vision = False
 
-    def __init__(self, scene: str = 'room.ttt', dt: float = 0.05):
+    def __init__(self, scene: str = "room.ttt", dt: float = 0.05):
         """A class constructor.
 
         Args:
             dt: Delta time of simulation.
         """
-        super(NavigationEnv, self).__init__(scene=scene,
-                                            dt=dt,
-                                            headless_mode=False)
+        super(NavigationEnv, self).__init__(scene=scene, dt=dt, headless_mode=False)
 
         self._goal_threshold = 0.05
         self._collision_dist = 0.05
 
         self._robot = SmartBot(enable_vision=self.enable_vision)
-        self._obstacles = sim.simGetObjectHandle('Obstacles_visual')
+        self._obstacles = sim.simGetObjectHandle("Obstacles_visual")
         self._navigation = self.navigation_type(self._robot, dt)
 
         self._goal = Dummy.create(size=0.1)
         self._goal.set_renderable(True)
-        self._goal.set_name('Goal')
+        self._goal.set_name("Goal")
 
-        max_linear_vel = self._robot.wheel_radius * 2 \
-                         * self._robot.velocity_limit[1] / 2
-        max_angular_vel = self._robot.wheel_radius \
-                          / self._robot.wheel_distance \
-                          * np.diff(self._robot.velocity_limit)
+        max_linear_vel = (
+            self._robot.wheel_radius * 2 * self._robot.velocity_limit[1] / 2
+        )
+        max_angular_vel = (
+            self._robot.wheel_radius
+            / self._robot.wheel_distance
+            * np.diff(self._robot.velocity_limit)
+        )
 
-        self.action_space = spaces.Box(*self._robot.velocity_limit,
-                                       shape=self._robot.velocity_limit.shape,
-                                       dtype='float32')
+        self.action_space = spaces.Box(
+            *self._robot.velocity_limit,
+            shape=self._robot.velocity_limit.shape,
+            dtype="float32"
+        )
 
         low = self._get_lower_observation(max_angular_vel)
         high = self._get_upper_observation(max_linear_vel, max_angular_vel)
 
         if self.enable_vision:
-            self.observation_space = spaces.Dict(dict(
-                image=spaces.Box(low=0, high=255, shape=self._robot.image.shape,
-                                 dtype=np.uint8),
-                scalars=spaces.Box(low=low, high=high, dtype=np.float32),
-            ))
+            self.observation_space = spaces.Dict(
+                dict(
+                    image=spaces.Box(
+                        low=0, high=255, shape=self._robot.image.shape, dtype=np.uint8
+                    ),
+                    scalars=spaces.Box(low=low, high=high, dtype=np.float32),
+                )
+            )
         else:
-            self.observation_space = spaces.Box(
-                low=low, high=high, dtype=np.float32)
+            self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
 
     def step(self, action: np.ndarray) -> ENV_TUPLE:
         """Performs simulation step by applying given action.
@@ -134,8 +130,10 @@ class NavigationEnv(gym_vrep.VrepEnv):
 
         state = sclaras
         if self.enable_vision:
-            state = {'scalars': sclaras,
-                     'image': (self._robot.image * 256.0).astype(np.uint8)}
+            state = {
+                "scalars": sclaras,
+                "image": (self._robot.image * 256.0).astype(np.uint8),
+            }
         return state, reward, done, info
 
     def reset(self) -> Union[np.ndarray, Dict[str, np.ndarray]]:
@@ -157,8 +155,10 @@ class NavigationEnv(gym_vrep.VrepEnv):
         self._navigation.reset(start_pose)
         self._pr.step()
         if self.enable_vision:
-            return {'scalars': self._get_scalar_observation(),
-                    'image': (self._robot.image * 256.0).astype(np.uint8)}
+            return {
+                "scalars": self._get_scalar_observation(),
+                "image": (self._robot.image * 256.0).astype(np.uint8),
+            }
 
         return self._get_scalar_observation()
 
@@ -177,7 +177,7 @@ class NavigationEnv(gym_vrep.VrepEnv):
             finished task.
         """
         done = False
-        info = {'is_success': False}
+        info = {"is_success": False}
         offset = self._robot.nb_ultrasonic_sensor
 
         reward = state[offset + 2] * np.cos(state[offset + 1])
@@ -191,7 +191,7 @@ class NavigationEnv(gym_vrep.VrepEnv):
 
         if state[offset + 0] <= self._goal_threshold:
             reward = 1.0
-            info = {'is_success': True}
+            info = {"is_success": True}
             done = True
 
         return reward, done, info
@@ -206,7 +206,8 @@ class NavigationEnv(gym_vrep.VrepEnv):
         """
         ultrasonic_distance = self._robot.ultrasonic_distances
         polar_coords = self._navigation.compute_position(
-            np.asarray(self._goal.get_position()[0:2]))
+            np.asarray(self._goal.get_position()[0:2])
+        )
         velocities = self._robot.get_base_velocities()
         state = np.concatenate((ultrasonic_distance, polar_coords, velocities))
         return state
@@ -221,17 +222,18 @@ class NavigationEnv(gym_vrep.VrepEnv):
             low_boundaries: Lowest values of observation space.
 
         """
-        ultrasonic_distance = (np.ones(self._robot.nb_ultrasonic_sensor) *
-                               self._robot.ultrasonic_sensor_bound[0])
+        ultrasonic_distance = (
+            np.ones(self._robot.nb_ultrasonic_sensor)
+            * self._robot.ultrasonic_sensor_bound[0]
+        )
         polar_coords = np.array([0.0, -np.pi])
         velocities = np.array([0.0, -max_angular_vel])
 
-        return np.concatenate(
-            (ultrasonic_distance, polar_coords, velocities))
+        return np.concatenate((ultrasonic_distance, polar_coords, velocities))
 
-    def _get_upper_observation(self,
-                               max_linear_vel: float,
-                               max_angular_vel: float) -> np.ndarray:
+    def _get_upper_observation(
+        self, max_linear_vel: float, max_angular_vel: float
+    ) -> np.ndarray:
         """Gets highest values of observation space
 
         Args:
@@ -242,14 +244,15 @@ class NavigationEnv(gym_vrep.VrepEnv):
             high_boundaries: Highest values of observation space.
 
         """
-        env_diagonal = np.sqrt(2.0 * (5.0 ** 2))
-        ultrasonic_distance = (np.ones(self._robot.nb_ultrasonic_sensor) *
-                               self._robot.ultrasonic_sensor_bound[1])
+        env_diagonal = np.sqrt(2.0 * (5.0**2))
+        ultrasonic_distance = (
+            np.ones(self._robot.nb_ultrasonic_sensor)
+            * self._robot.ultrasonic_sensor_bound[1]
+        )
         polar_coords = np.array([env_diagonal, np.pi])
         velocities = np.array([max_linear_vel, max_angular_vel])
 
-        return np.concatenate(
-            (ultrasonic_distance, polar_coords, velocities))
+        return np.concatenate((ultrasonic_distance, polar_coords, velocities))
 
     def _sample_start_parameters(self) -> np.ndarray:
         """A method that generates mobile robot start pose and desired goal/
@@ -261,7 +264,12 @@ class NavigationEnv(gym_vrep.VrepEnv):
         idx = np.random.randint(GOAL_LIST.shape[0])
         goal = self._generate_goal(idx)
         start_pose = self._generate_start_pose(idx)
-        self._goal.set_position(list(goal) + [0.0, ])
+        self._goal.set_position(
+            list(goal)
+            + [
+                0.0,
+            ]
+        )
         return start_pose
 
     @staticmethod
@@ -305,24 +313,25 @@ class NavigationEnv(gym_vrep.VrepEnv):
     def _randomize_object_color(object_handle: int):
         color = list(np.random.uniform(low=0.0, high=1.0, size=(3,)))
         sim.simSetShapeColor(
-            object_handle, None, sim.sim_colorcomponent_ambient_diffuse, color)
+            object_handle, None, sim.sim_colorcomponent_ambient_diffuse, color
+        )
 
 
 class OdomNavigationEnv(NavigationEnv):
-    """Odometry variant of environment.
-    """
-    navigation_type = NAVIGATION_TYPE['Odometry']
+    """Odometry variant of environment."""
+
+    navigation_type = NAVIGATION_TYPE["Odometry"]
 
 
 class GyroNavigationEnv(NavigationEnv):
-    """Gyrodometry variant of environment.
-    """
-    navigation_type = NAVIGATION_TYPE['Gyrodometry']
+    """Gyrodometry variant of environment."""
+
+    navigation_type = NAVIGATION_TYPE["Gyrodometry"]
 
 
 class VisionNavigationEnv(NavigationEnv):
-    """Vision feedback variant of environment.
-    """
+    """Vision feedback variant of environment."""
+
     enable_vision = True
 
 
@@ -330,12 +339,14 @@ class DynamicNavigationEnv(NavigationEnv):
     """Environment variant with moving robots as dynamic obstacles.In this
     environment robot has additional ultrasonic sensors in the back.
     """
+
     def __init__(self, dt: float = 0.05):
         SmartBot.nb_ultrasonic_sensor = 10
-        super(DynamicNavigationEnv, self).__init__('dynamic_room.ttt', dt)
+        super(DynamicNavigationEnv, self).__init__("dynamic_room.ttt", dt)
         self._dummy_robots = [PioneerP3Dx(count=i) for i in range(4)]
-        self._initials_robots_config = [robot.get_configuration_tree()
-                                        for robot in self._dummy_robots]
+        self._initials_robots_config = [
+            robot.get_configuration_tree() for robot in self._dummy_robots
+        ]
 
     def reset(self) -> Union[np.ndarray, Dict[str, np.ndarray]]:
         for conf in self._initials_robots_config:
@@ -352,4 +363,5 @@ class DynamicVisionNavigationEnv(DynamicNavigationEnv):
     environment robot has additional ultrasonic sensors in the back and also
     camera.
     """
+
     enable_vision = True

@@ -12,20 +12,20 @@ class SmartBot(NonHolonomicBase):
     ultrasonic_sensor_bound = np.array([0.02, 2.0])
 
     def __init__(self, count: int = 0, enable_vision: bool = False):
-        super().__init__(count, 2, 'smartbot')
+        super().__init__(count, 2, "smartbot")
 
         self._enable_vision = enable_vision
 
-        self._camera = VisionSensor('{}_camera'.format(self.get_name()))
-        self._gyroscope = Gyroscope('{}_gyro_sensor'.format(self.get_name()))
-        self._accelerometer = Accelerometer(
-            '{}_accelerometer'.format(self.get_name()))
+        self._camera = VisionSensor("{}_camera".format(self.get_name()))
+        self._gyroscope = Gyroscope("{}_gyro_sensor".format(self.get_name()))
+        self._accelerometer = Accelerometer("{}_accelerometer".format(self.get_name()))
 
         self._ultrasonic_values = 2 * np.ones(self.nb_ultrasonic_sensor)
-        self._ultrasonic_sensors = [ProximitySensor(
-            '{}_ultrasonic_sensor_{}'.format(self.get_name(), i + 1))
-            for i in range(self.nb_ultrasonic_sensor)]
-        
+        self._ultrasonic_sensors = [
+            ProximitySensor("{}_ultrasonic_sensor_{}".format(self.get_name(), i + 1))
+            for i in range(self.nb_ultrasonic_sensor)
+        ]
+
         self._previous_joint_positions = self.get_joint_positions()
 
         self.initial_configuration = self.get_configuration_tree()
@@ -80,8 +80,9 @@ class SmartBot(NonHolonomicBase):
         Returns:
             encoder_ticks: Current values of encoders ticks.
         """
-        dphi = np.asarray(self.get_joint_positions()) \
-               - np.asarray(self._previous_joint_positions)
+        dphi = np.asarray(self.get_joint_positions()) - np.asarray(
+            self._previous_joint_positions
+        )
         self._previous_joint_positions = self.get_joint_positions()
 
         def correct_angle(angle):

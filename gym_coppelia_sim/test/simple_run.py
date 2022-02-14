@@ -1,10 +1,10 @@
 import gym
-import gym_vrep
+import gym_coppelia_sim
 import cv2
 
 
 def main():
-    env = gym.make('DynamicRoomNavigation-v0')
+    env = gym.make("DynamicRoomNavigation-v0")
 
     for i in range(10):
         env.reset()
@@ -16,5 +16,5 @@ def main():
     env.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

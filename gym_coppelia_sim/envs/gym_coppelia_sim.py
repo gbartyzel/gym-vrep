@@ -7,17 +7,16 @@ from pyrep import PyRep
 from pyrep.backend import sim, simConst
 
 
-class VrepEnv(gym.Env):
+class CoppeliaSimEnv(gym.Env):
     """
-    Superclass for V-REP gym environments.
+    Superclass for CoppeliaSim gym environments.
     """
-    metadata = {'render.modes': ['human']}
 
-    def __init__(self,
-                 scene: str,
-                 dt: float,
-                 model: str = None,
-                 headless_mode: bool = False):
+    metadata = {"render.modes": ["human"]}
+
+    def __init__(
+        self, scene: str, dt: float, model: str = None, headless_mode: bool = False
+    ):
         """
         Class constructor
         Args:
@@ -28,9 +27,10 @@ class VrepEnv(gym.Env):
         """
         self.seed()
         self._assets_path = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), 'assets')
-        self._scenes_path = os.path.join(self._assets_path, 'scenes')
-        self._models_path = os.path.join(self._assets_path, 'models')
+            os.path.dirname(os.path.realpath(__file__)), "assets"
+        )
+        self._scenes_path = os.path.join(self._assets_path, "scenes")
+        self._models_path = os.path.join(self._assets_path, "models")
 
         self._pr = PyRep()
         self._launch_scene(scene, headless_mode)
@@ -41,14 +41,14 @@ class VrepEnv(gym.Env):
         self._pr.start()
 
     def _launch_scene(self, scene: str, headless_mode: bool):
-        assert os.path.splitext(scene)[1] == '.ttt'
+        assert os.path.splitext(scene)[1] == ".ttt"
         assert scene in os.listdir(self._scenes_path)
         scene_path = os.path.join(self._scenes_path, scene)
         self._pr.launch(scene_path, headless=headless_mode)
 
     def _import_model(self, model: str):
         if model is not None:
-            assert os.path.splitext(model)[1] == '.ttm'
+            assert os.path.splitext(model)[1] == ".ttm"
             assert model in os.listdir(self._models_path)
             model_path = os.path.join(self._models_path, model)
             self._pr.import_model(model_path)
@@ -73,5 +73,5 @@ class VrepEnv(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def render(self, mode: str = 'human') -> NoReturn:
-        print('Not implemented yet')
+    def render(self, mode: str = "human") -> NoReturn:
+        print("Not implemented yet")

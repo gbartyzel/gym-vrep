@@ -5,12 +5,11 @@ from typing import Tuple
 
 import numpy as np
 
-from gym_vrep.envs.mobile_robot_navigation.robots.smartbot import SmartBot
+from gym_coppelia_sim.envs.mobile_robot_navigation.robots.smartbot import SmartBot
 
 
 class Base(metaclass=abc.ABCMeta):
-    """A superclass for navigation tasks.
-    """
+    """A superclass for navigation tasks."""
 
     def __init__(self, robot: SmartBot, dt):
         """A constructor of superclass
@@ -139,10 +138,13 @@ class Odometry(Base):
         """
         delta_path, delta_beta = self.compute_delta_motion()
 
-        self._pose += np.array([
-            delta_path * np.cos(self._pose[2] + delta_beta / 2),
-            delta_path * np.sin(self._pose[2] + delta_beta / 2), delta_beta
-        ])
+        self._pose += np.array(
+            [
+                delta_path * np.cos(self._pose[2] + delta_beta / 2),
+                delta_path * np.sin(self._pose[2] + delta_beta / 2),
+                delta_beta,
+            ]
+        )
 
         self._pose = np.round(self._pose, 3)
         self._pose[2] = self._angle_correction(self._pose[2])
@@ -172,8 +174,7 @@ class Odometry(Base):
         delta_path = np.round(np.sum(wheels_paths) / 2, 3)
         self._sum_path += delta_path
 
-        delta_beta = (wheels_paths[1] - wheels_paths[0]) \
-                     / self._robot.wheel_distance
+        delta_beta = (wheels_paths[1] - wheels_paths[0]) / self._robot.wheel_distance
         delta_beta = np.round(delta_beta, 3)
 
         return delta_path, delta_beta
@@ -218,10 +219,13 @@ class Gyrodometry(Odometry):
         delta_path, _ = self.compute_delta_motion()
         delta_beta = self.compute_rotation()
 
-        self._pose += np.array([
-            delta_path * np.cos(self._pose[2] + delta_beta / 2),
-            delta_path * np.sin(self._pose[2] + delta_beta / 2), delta_beta
-        ])
+        self._pose += np.array(
+            [
+                delta_path * np.cos(self._pose[2] + delta_beta / 2),
+                delta_path * np.sin(self._pose[2] + delta_beta / 2),
+                delta_beta,
+            ]
+        )
 
         self._pose = np.round(self._pose, 3)
         self._pose[2] = self._angle_correction(self._pose[2])
@@ -235,7 +239,7 @@ class Gyrodometry(Odometry):
         return np.round(np.array([distance, heading_angle]), 3)
 
     def compute_rotation(self) -> float:
-        """ A method that compute difference between current and previous
+        """A method that compute difference between current and previous
         rotation angle of mobile robot. The calculation are based on mobile
         robot angular velocity along z-axis.
 
