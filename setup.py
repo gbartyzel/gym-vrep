@@ -8,7 +8,11 @@ setup(
     name="gym_coppelia_sim",
     version="1.2.0",
     license="Apache License 2.0",
-    install_requires=["gym<1.0.0", "numpy"],
+    install_requires=[
+        "gym==0.21.0",
+        "numpy",
+        "opencv-python==4.2.*",
+    ],
     description="The OpenAI Gym for robotics. Toolkit is using CoppeliaSim.",
     url="https://github.com/souphis/gym_vrep",
     author="Grzegorz Bartyzel",
