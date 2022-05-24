@@ -82,7 +82,7 @@ class NavigationEnv(gym_coppelia_sim.CoppeliaSimEnv):
             self._robot.wheel_radius
             / self._robot.wheel_distance
             * np.diff(self._robot.velocity_limit)
-        )
+        )[0]
 
         self.action_space = spaces.Box(
             *self._robot.velocity_limit,
