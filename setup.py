@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "gym-coppelia-sim"))
 
 setup(
     name="gym_coppelia_sim",
-    version="1.2.1",
+    version="0.2.0",
     license="Apache License 2.0",
     install_requires=[
         "gym==0.21.0",
