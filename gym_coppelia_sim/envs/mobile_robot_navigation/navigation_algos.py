@@ -1,15 +1,32 @@
 import abc
-from typing import Any, NoReturn, Tuple
+from typing import Any, Dict, Optional, Tuple, Type
 
 import numpy as np
 
-from gym_coppelia_sim.envs.mobile_robot_navigation.robots.smartbot import SmartBot
+from gym_coppelia_sim.common.typing import NumpyOrFloat
+from gym_coppelia_sim.common.utils import correct_angle
+from gym_coppelia_sim.robots.smartbot import SmartBot
 
 
-class Base(metaclass=abc.ABCMeta):
+class NavigationAlgorithm(abc.ABC):
     """A superclass for navigation tasks."""
 
-    def __init__(self, robot: SmartBot, dt):
+    registered_algos: Dict[str, Type["NavigationAlgorithm"]] = {}
+
+    def __init_subclass__(
+        cls: Type["NavigationAlgorithm"], algo_type: Optional[str] = None, **kwargs
+    ):
+        super().__init_subclass__(**kwargs)
+        if algo_type is not None:
+            cls.registered_algos[algo_type] = cls
+
+    @classmethod
+    def build(
+        cls: Type["NavigationAlgorithm"], algo_type: str, **kwargs
+    ) -> "NavigationAlgorithm":
+        return cls.registered_algos[algo_type](**kwargs)
+
+    def __init__(self, robot: SmartBot, dt: float):
         """A constructor of superclass
 
         Args:
@@ -40,43 +57,14 @@ class Base(metaclass=abc.ABCMeta):
         """
         return NotImplementedError
 
-    @staticmethod
-    def _angle_correction(angle: float or np.ndarray) -> np.ndarray:
-        """Static method that correct given angles into range -pi, pi
 
-        Args:
-            angle: An array of angles or single angle
-
-        Returns:
-            new_angle: Angles or angle after correction.
-        """
-        new_angle = None
-        if angle >= 0:
-            new_angle = np.fmod((angle + np.pi), (2 * np.pi)) - np.pi
-
-        if angle < 0:
-            new_angle = np.fmod((angle - np.pi), (2 * np.pi)) + np.pi
-
-        new_angle = np.round(angle, 3)
-        return new_angle
-
-
-class Ideal(Base):
+class IdealNavigationAlgorithm(NavigationAlgorithm, algo_type="ideal"):
     """A class that computes robot polar coordinates of mobile robot based on
     absolute pose received from simulation engine and kinematic model.
 
     """
 
-    def __init__(self, robot: SmartBot, dt: float):
-        """A constructor of class.
-
-        Args:
-            robot: An object of mobile robot.
-            dt: A delta time of simulation.
-        """
-        super(Ideal, self).__init__(robot, dt)
-
-    def compute_position(self, goal) -> np.ndarray:
+    def compute_position(self, goal: np.ndarray) -> np.ndarray:
         """A method that computer polar coordinates of mobile robot.
 
         Args:
@@ -86,20 +74,20 @@ class Ideal(Base):
             polar_coordinates: A polar coordinates of mobile robot.
         """
         pose = np.round(self._robot.get_2d_pose(), 3)
-        pose[2] = self._angle_correction(pose[2])
+        pose[2] = correct_angle(pose[2])
 
         distance = np.linalg.norm(pose[0:2] - goal)
 
         theta = np.arctan2(goal[1] - pose[1], goal[0] - pose[0])
 
-        theta = self._angle_correction(theta)
+        theta = correct_angle(theta)
 
-        heading_angle = self._angle_correction(theta - pose[2])
+        heading_angle = correct_angle(theta - pose[2])
 
         polar_coordinates = np.round(np.array([distance, heading_angle]), 3)
         return polar_coordinates
 
-    def reset(self, start_pose: np.ndarray) -> NoReturn:
+    def reset(self, start_pose: np.ndarray):
         """A method that reset member variable.
 
         Args:
@@ -108,7 +96,7 @@ class Ideal(Base):
         self._pose = start_pose
 
 
-class Odometry(Base):
+class OdometryNavigationAlgorithm(NavigationAlgorithm, algo_type="odometry"):
     """A class that computes robot polar coordinates based of mobile robot based
     on odometry and kinematic model.
 
@@ -121,7 +109,7 @@ class Odometry(Base):
             robot: An object of mobile robot.
             dt: A delta time of simulation.
         """
-        super(Odometry, self).__init__(robot, dt)
+        super().__init__(robot, dt)
 
         self._sum_path = 0.0
 
@@ -145,20 +133,20 @@ class Odometry(Base):
         )
 
         self._pose = np.round(self._pose, 3)
-        self._pose[2] = self._angle_correction(self._pose[2])
+        self._pose[2] = correct_angle(self._pose[2])
 
         distance = np.linalg.norm(self._pose[0:2] - goal)
 
         theta = np.arctan2(goal[1] - self._pose[1], goal[0] - self._pose[0])
-        theta = self._angle_correction(theta)
+        theta = correct_angle(theta)
 
-        heading_angle = self._angle_correction(theta - self._pose[2])
+        heading_angle = correct_angle(theta - self._pose[2])
 
         polar_coordinates = np.round(np.array([distance, heading_angle]), 3)
 
         return polar_coordinates
 
-    def compute_delta_motion(self) -> Tuple[float, float]:
+    def compute_delta_motion(self) -> Tuple[NumpyOrFloat, NumpyOrFloat]:
         """A method that compute difference between current traveled path and
         previous path. Also compute difference between current mobile robot
         rotation and previous one.
@@ -175,9 +163,9 @@ class Odometry(Base):
         delta_beta = (wheels_paths[1] - wheels_paths[0]) / self._robot.wheel_distance
         delta_beta = np.round(delta_beta, 3)
 
-        return delta_path, delta_beta
+        return float(delta_path), float(delta_beta)
 
-    def reset(self, start_pose: np.ndarray) -> NoReturn:
+    def reset(self, start_pose: np.ndarray):
         """A method that reset member variable.
 
         Args:
@@ -187,7 +175,9 @@ class Odometry(Base):
         self._sum_path = 0.0
 
 
-class Gyrodometry(Odometry):
+class GyrodometryNavigationAlgorithm(
+    OdometryNavigationAlgorithm, algo_type="gyrodometry"
+):
     """A class that computes robot polar coordinates based of mobile robot based
     on odometry, readings from gyroscope and kinematic model.
 
@@ -200,7 +190,7 @@ class Gyrodometry(Odometry):
             robot: An object of mobile robot.
             dt: A delta time of simulation.
         """
-        super(Gyrodometry, self).__init__(robot, dt)
+        super().__init__(robot, dt)
 
         self._previous_phi = 0.0
         self._previous_angular_velocity = 0.0
@@ -226,17 +216,17 @@ class Gyrodometry(Odometry):
         )
 
         self._pose = np.round(self._pose, 3)
-        self._pose[2] = self._angle_correction(self._pose[2])
+        self._pose[2] = correct_angle(self._pose[2])
 
         distance = np.linalg.norm(self._pose[0:2] - goal)
 
         theta = np.arctan2(goal[1] - self._pose[1], goal[0] - self._pose[0])
-        theta = self._angle_correction(theta)
-        heading_angle = self._angle_correction(theta - self._pose[2])
+        theta = correct_angle(theta)
+        heading_angle = correct_angle(theta - self._pose[2])
 
         return np.round(np.array([distance, heading_angle]), 3)
 
-    def compute_rotation(self) -> float:
+    def compute_rotation(self) -> NumpyOrFloat:
         """A method that compute difference between current and previous
         rotation angle of mobile robot. The calculation are based on mobile
         robot angular velocity along z-axis.
@@ -251,7 +241,7 @@ class Gyrodometry(Odometry):
 
         return delta_beta
 
-    def reset(self, start_pose: np.ndarray) -> NoReturn:
+    def reset(self, start_pose: np.ndarray):
         """A method that reset member variable.
 
         Args:

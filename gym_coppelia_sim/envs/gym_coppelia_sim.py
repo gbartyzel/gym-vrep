@@ -1,10 +1,13 @@
 import os
-from typing import NoReturn
+from typing import Optional
 
 import gym
+import numpy as np
 from gym.utils import seeding
 from pyrep import PyRep
 from pyrep.backend import sim, simConst
+
+from gym_coppelia_sim.common.typing import ArrayStruct, EnvironmentTuple
 
 
 class CoppeliaSimEnv(gym.Env):
@@ -15,7 +18,11 @@ class CoppeliaSimEnv(gym.Env):
     metadata = {"render.modes": ["human"]}
 
     def __init__(
-        self, scene: str, dt: float, model: str = None, headless_mode: bool = False
+        self,
+        scene: str,
+        dt: float,
+        model: Optional[str] = None,
+        headless_mode: bool = False,
     ):
         """
         Class constructor
@@ -46,7 +53,7 @@ class CoppeliaSimEnv(gym.Env):
         scene_path = os.path.join(self._scenes_path, scene)
         self._pr.launch(scene_path, headless=headless_mode)
 
-    def _import_model(self, model: str):
+    def _import_model(self, model: Optional[str]):
         if model is not None:
             assert os.path.splitext(model)[1] == ".ttm"
             assert model in os.listdir(self._models_path)
@@ -59,19 +66,19 @@ class CoppeliaSimEnv(gym.Env):
         sim.simSetBoolParameter(simConst.sim_boolparam_hierarchy_visible, False)
         sim.simSetBoolParameter(simConst.sim_boolparam_console_visible, False)
 
-    def step(self, action):
+    def step(self, action: np.ndarray) -> EnvironmentTuple:
         return NotImplementedError
 
-    def reset(self):
+    def reset(self) -> ArrayStruct:
         return NotImplementedError
 
     def close(self):
         self._pr.stop()
         self._pr.shutdown()
 
-    def seed(self, seed: int = None):
+    def seed(self, seed: Optional[int] = None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def render(self, mode: str = "human") -> NoReturn:
+    def render(self, mode: str = "human"):
         print("Not implemented yet")

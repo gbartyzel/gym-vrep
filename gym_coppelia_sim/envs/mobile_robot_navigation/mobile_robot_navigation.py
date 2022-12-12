@@ -1,33 +1,20 @@
-from typing import Dict, Tuple, Union
+from typing import Tuple
 
 import numpy as np
 from gym import spaces
 from pyrep.backend import sim
 from pyrep.objects.dummy import Dummy
 
+from gym_coppelia_sim.common.typing import ArrayStruct, EnvironmentTuple, StepInfo
 from gym_coppelia_sim.envs import gym_coppelia_sim
 from gym_coppelia_sim.envs.mobile_robot_navigation.navigation_algos import (
-    Gyrodometry,
-    Ideal,
-    Odometry,
+    NavigationAlgorithm,
 )
-from gym_coppelia_sim.envs.mobile_robot_navigation.robots import PioneerP3Dx, SmartBot
-
-NAVIGATION_TYPE = {
-    "Ideal": Ideal,
-    "Odometry": Odometry,
-    "Gyrodometry": Gyrodometry,
-}
+from gym_coppelia_sim.robots import PioneerP3Dx, SmartBot
 
 SPAWN_LIST = np.array([[-2.0, -2.0], [2.0, -2.0], [-2.0, 2.0], [2.0, 2.0]])
 
 GOAL_LIST = np.array([[2.0, 2.0], [-2.0, 2.0], [2.0, -2.0], [-2.0, -2.0]])
-
-ENV_TUPLE = Tuple[
-    Union[Dict[str, np.ndarray], np.ndarray], float, bool, Dict[str, bool]
-]
-
-ENV_TUPLE_WO_STATE = Tuple[float, bool, Dict[str, bool]]
 
 
 class NavigationEnv(gym_coppelia_sim.CoppeliaSimEnv):
@@ -52,23 +39,26 @@ class NavigationEnv(gym_coppelia_sim.CoppeliaSimEnv):
     """
 
     metadata = {"render.modes": ["human"]}
-    navigation_type = NAVIGATION_TYPE["Ideal"]
     enable_vision = False
 
-    def __init__(self, scene: str = "room.ttt", dt: float = 0.05):
+    def __init__(
+        self, scene: str = "room.ttt", dt: float = 0.05, navigation_type: str = "ideal"
+    ):
         """A class constructor.
 
         Args:
             dt: Delta time of simulation.
         """
-        super(NavigationEnv, self).__init__(scene=scene, dt=dt, headless_mode=False)
+        super().__init__(scene=scene, dt=dt, headless_mode=False)
 
         self._goal_threshold = 0.05
         self._collision_dist = 0.05
 
         self._robot = SmartBot(enable_vision=self.enable_vision)
         self._obstacles = sim.simGetObjectHandle("Obstacles_visual")
-        self._navigation = self.navigation_type(self._robot, dt)
+        self._navigation = NavigationAlgorithm.build(
+            algo_type=navigation_type, robot=self._robot, dt=dt
+        )
 
         self._goal = Dummy.create(size=0.1)
         self._goal.set_renderable(True)
@@ -104,7 +94,7 @@ class NavigationEnv(gym_coppelia_sim.CoppeliaSimEnv):
         else:
             self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
 
-    def step(self, action: np.ndarray) -> ENV_TUPLE:
+    def step(self, action: np.ndarray) -> EnvironmentTuple:
         """Performs simulation step by applying given action.
 
         Args:
@@ -135,7 +125,7 @@ class NavigationEnv(gym_coppelia_sim.CoppeliaSimEnv):
             }
         return state, reward, done, info
 
-    def reset(self) -> Union[np.ndarray, Dict[str, np.ndarray]]:
+    def reset(self) -> ArrayStruct:
         """Resets environment to initial state.
 
         Returns:
@@ -161,7 +151,7 @@ class NavigationEnv(gym_coppelia_sim.CoppeliaSimEnv):
 
         return self._get_scalar_observation()
 
-    def _compute_reward(self, state: np.ndarray) -> ENV_TUPLE_WO_STATE:
+    def _compute_reward(self, state: np.ndarray) -> Tuple[float, bool, StepInfo]:
         """Computes reward for current state-action pair.
 
         Args:
@@ -316,18 +306,6 @@ class NavigationEnv(gym_coppelia_sim.CoppeliaSimEnv):
         )
 
 
-class OdomNavigationEnv(NavigationEnv):
-    """Odometry variant of environment."""
-
-    navigation_type = NAVIGATION_TYPE["Odometry"]
-
-
-class GyroNavigationEnv(NavigationEnv):
-    """Gyrodometry variant of environment."""
-
-    navigation_type = NAVIGATION_TYPE["Gyrodometry"]
-
-
 class VisionNavigationEnv(NavigationEnv):
     """Vision feedback variant of environment."""
 
@@ -347,7 +325,7 @@ class DynamicNavigationEnv(NavigationEnv):
             robot.get_configuration_tree() for robot in self._dummy_robots
         ]
 
-    def reset(self) -> Union[np.ndarray, Dict[str, np.ndarray]]:
+    def reset(self) -> ArrayStruct:
         for conf in self._initials_robots_config:
             self._pr.set_configuration_tree(conf)
         for robot in self._dummy_robots:
