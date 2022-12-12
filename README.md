@@ -35,7 +35,7 @@ Environment state space description:
 | polar coordinates                  | polar coordinates                  |
 | linear and angular velocities      | image from camera sensor           |
 |                                    | linear and angular velocities      |
-    
+
 ### Installation
 
 #### Requirements:

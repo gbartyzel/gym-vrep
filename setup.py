@@ -1,15 +1,18 @@
-from setuptools import setup, find_packages
-import sys
 import os.path
+import sys
+
+from setuptools import find_packages, setup
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "gym-coppelia-sim"))
 
+__version__ = "0.2.0"
+
 setup(
     name="gym_coppelia_sim",
-    version="0.2.0",
+    version=__version__,
     license="Apache License 2.0",
     install_requires=[
-        "gym==0.21.0",
+        "gym==0.22.0",
         "numpy",
         "opencv-python==4.2.*",
     ],
