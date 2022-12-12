@@ -1,6 +1,6 @@
 import gym
-import gym_coppelia_sim
-import cv2
+
+import gym_coppelia_sim  # noqa
 
 
 def main():

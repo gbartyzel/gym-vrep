@@ -1,6 +1,4 @@
-from typing import Dict
-from typing import Tuple
-from typing import Union
+from typing import Dict, Tuple, Union
 
 import numpy as np
 from gym import spaces
@@ -8,11 +6,12 @@ from pyrep.backend import sim
 from pyrep.objects.dummy import Dummy
 
 from gym_coppelia_sim.envs import gym_coppelia_sim
-from gym_coppelia_sim.envs.mobile_robot_navigation.navigation_algos import Gyrodometry
-from gym_coppelia_sim.envs.mobile_robot_navigation.navigation_algos import Ideal
-from gym_coppelia_sim.envs.mobile_robot_navigation.navigation_algos import Odometry
-from gym_coppelia_sim.envs.mobile_robot_navigation.robots import PioneerP3Dx
-from gym_coppelia_sim.envs.mobile_robot_navigation.robots import SmartBot
+from gym_coppelia_sim.envs.mobile_robot_navigation.navigation_algos import (
+    Gyrodometry,
+    Ideal,
+    Odometry,
+)
+from gym_coppelia_sim.envs.mobile_robot_navigation.robots import PioneerP3Dx, SmartBot
 
 NAVIGATION_TYPE = {
     "Ideal": Ideal,
