@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 from typing import Any, Dict, Optional, Tuple, Type
 
@@ -9,25 +11,38 @@ from gym_coppelia_sim.robots.smartbot import SmartBot
 
 
 class NavigationAlgorithm(abc.ABC):
-    """A superclass for navigation tasks."""
+    """A factory for navigation algorithms."""
 
-    registered_algos: Dict[str, Type["NavigationAlgorithm"]] = {}
+    registered_algos: Dict[str, Type[NavigationAlgorithm]] = {}
 
     def __init_subclass__(
-        cls: Type["NavigationAlgorithm"], algo_type: Optional[str] = None, **kwargs
+        cls: Type[NavigationAlgorithm], algo_type: Optional[str] = None, **kwargs
     ):
+        """Registers implemented child classes.
+
+        Args:
+            algo_type: Type of the implemented child class.
+        """
         super().__init_subclass__(**kwargs)
         if algo_type is not None:
             cls.registered_algos[algo_type] = cls
 
     @classmethod
     def build(
-        cls: Type["NavigationAlgorithm"], algo_type: str, **kwargs
-    ) -> "NavigationAlgorithm":
+        cls: Type[NavigationAlgorithm], algo_type: str, **kwargs
+    ) -> NavigationAlgorithm:
+        """A factory method that builds implemented child classes.
+
+        Args:
+            algo_type: Type of the algorithm that will be initialized.
+
+        Returns:
+            Selected child class.
+        """
         return cls.registered_algos[algo_type](**kwargs)
 
     def __init__(self, robot: SmartBot, dt: float):
-        """A constructor of superclass
+        """Initialize class object.
 
         Args:
             robot: An object of mobile robot.
@@ -46,7 +61,6 @@ class NavigationAlgorithm(abc.ABC):
         Args:
             goal: Desired goal of mobile robot.
         """
-        return NotImplementedError
 
     @abc.abstractmethod
     def reset(self, start_pose: np.ndarray) -> Any:
@@ -55,7 +69,6 @@ class NavigationAlgorithm(abc.ABC):
         Args:
             start_pose: Start pose of mobile robot.
         """
-        return NotImplementedError
 
 
 class IdealNavigationAlgorithm(NavigationAlgorithm, algo_type="ideal"):

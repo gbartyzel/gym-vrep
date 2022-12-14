@@ -11,11 +11,19 @@ from gym_coppelia_sim.common.utils import correct_angle
 
 
 class SmartBot(NonHolonomicBase):
+    """A class for handling smartbot entity in CoppeliaSim."""
+
     velocity_limit = np.array([0.0, 15.0])
     nb_ultrasonic_sensor = 5
     ultrasonic_sensor_bound = np.array([0.02, 2.0])
 
     def __init__(self, count: int = 0, enable_vision: bool = False):
+        """Initialize class object.
+
+        Args:
+            count: A unique id of the robot.
+            enable_vision: Whether to use visual feedback or not.
+        """
         super().__init__(count, 2, "smartbot")
 
         self._enable_vision = enable_vision
