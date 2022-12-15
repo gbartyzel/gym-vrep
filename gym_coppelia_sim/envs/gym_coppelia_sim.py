@@ -1,10 +1,12 @@
 import os
-from typing import NoReturn
+from typing import Optional
 
 import gym
-from gym.utils import seeding
+import numpy as np
 from pyrep import PyRep
 from pyrep.backend import sim, simConst
+
+from gym_coppelia_sim.common.typing import ArrayStruct, EnvironmentTuple
 
 
 class CoppeliaSimEnv(gym.Env):
@@ -15,17 +17,20 @@ class CoppeliaSimEnv(gym.Env):
     metadata = {"render.modes": ["human"]}
 
     def __init__(
-        self, scene: str, dt: float, model: str = None, headless_mode: bool = False
+        self,
+        scene: str,
+        dt: float,
+        model: Optional[str] = None,
+        headless_mode: bool = False,
     ):
-        """
-        Class constructor
+        """Initialize class object.
+
         Args:
             scene: String, name of the scene to be loaded
             dt: Float, a time step of the simulation
             model:  Optional[String], name of the model that to be imported
             headless_mode: Bool, define mode of the simulation
         """
-        self.seed()
         self._assets_path = os.path.join(
             os.path.dirname(os.path.realpath(__file__)), "assets"
         )
@@ -46,32 +51,33 @@ class CoppeliaSimEnv(gym.Env):
         scene_path = os.path.join(self._scenes_path, scene)
         self._pr.launch(scene_path, headless=headless_mode)
 
-    def _import_model(self, model: str):
+    def _import_model(self, model: Optional[str]):
         if model is not None:
             assert os.path.splitext(model)[1] == ".ttm"
             assert model in os.listdir(self._models_path)
             model_path = os.path.join(self._models_path, model)
             self._pr.import_model(model_path)
 
-    @staticmethod
-    def _clear_gui():
+    def _clear_gui(self):
         sim.simSetBoolParameter(simConst.sim_boolparam_browser_visible, False)
         sim.simSetBoolParameter(simConst.sim_boolparam_hierarchy_visible, False)
         sim.simSetBoolParameter(simConst.sim_boolparam_console_visible, False)
 
-    def step(self, action):
-        return NotImplementedError
+    def step(self, action: np.ndarray) -> EnvironmentTuple:
+        raise NotImplementedError
 
-    def reset(self):
-        return NotImplementedError
+    def reset(
+        self,
+        *,
+        seed: Optional[int] = None,
+        return_info: bool = False,
+        options: Optional[dict] = None,
+    ) -> ArrayStruct:
+        super().reset(seed=seed, return_info=return_info, options=options)
 
     def close(self):
         self._pr.stop()
         self._pr.shutdown()
 
-    def seed(self, seed: int = None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
-
-    def render(self, mode: str = "human") -> NoReturn:
+    def render(self, mode: str = "human"):
         print("Not implemented yet")

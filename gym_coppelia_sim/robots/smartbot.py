@@ -1,3 +1,5 @@
+from typing import cast
+
 import numpy as np
 from pyrep.objects.proximity_sensor import ProximitySensor
 from pyrep.objects.vision_sensor import VisionSensor
@@ -5,13 +7,23 @@ from pyrep.robots.mobiles.nonholonomic_base import NonHolonomicBase
 from pyrep.sensors.accelerometer import Accelerometer
 from pyrep.sensors.gyroscope import Gyroscope
 
+from gym_coppelia_sim.common.utils import correct_angle
+
 
 class SmartBot(NonHolonomicBase):
+    """A class for handling smartbot entity in CoppeliaSim."""
+
     velocity_limit = np.array([0.0, 15.0])
     nb_ultrasonic_sensor = 5
     ultrasonic_sensor_bound = np.array([0.02, 2.0])
 
     def __init__(self, count: int = 0, enable_vision: bool = False):
+        """Initialize class object.
+
+        Args:
+            count: A unique id of the robot.
+            enable_vision: Whether to use visual feedback or not.
+        """
         super().__init__(count, 2, "smartbot")
 
         self._enable_vision = enable_vision
@@ -61,7 +73,7 @@ class SmartBot(NonHolonomicBase):
         Returns:
             accelerometer_values: Array of values received from accelerometer.
         """
-        values = self._accelerometer.read()
+        values = cast(np.ndarray, self._accelerometer.read())
         return np.round(values, 4)
 
     @property
@@ -71,7 +83,7 @@ class SmartBot(NonHolonomicBase):
         Returns:
             gyroscope_values: Array of values received from gyroscope.
         """
-        values = self._gyroscope.read()
+        values = cast(np.ndarray, self._gyroscope.read())
         return np.round(values, 4)
 
     @property
@@ -84,16 +96,5 @@ class SmartBot(NonHolonomicBase):
             self._previous_joint_positions
         )
         self._previous_joint_positions = self.get_joint_positions()
-
-        def correct_angle(angle):
-            new_angle = None
-            if angle >= 0:
-                new_angle = np.fmod((angle + np.pi), (2 * np.pi)) - np.pi
-
-            if angle < 0:
-                new_angle = np.fmod((angle - np.pi), (2 * np.pi)) + np.pi
-
-            new_angle = np.round(angle, 3)
-            return new_angle
 
         return np.asarray([correct_angle(angle) for angle in dphi])
