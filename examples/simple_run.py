@@ -4,7 +4,7 @@ import gym_coppelia_sim  # noqa
 
 
 def main():
-    env = gym.make("DynamicRoomNavigation-v0")
+    env = gym.make("RoomNavigation-v0")
 
     for i in range(10):
         env.reset()

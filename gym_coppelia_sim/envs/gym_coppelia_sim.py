@@ -74,7 +74,6 @@ class CoppeliaSimEnv(gym.Env):
         options: Optional[dict] = None,
     ) -> ArrayStruct:
         super().reset(seed=seed, return_info=return_info, options=options)
-        raise NotImplementedError
 
     def close(self):
         self._pr.stop()
