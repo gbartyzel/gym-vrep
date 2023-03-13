@@ -9,11 +9,8 @@ implemented two variants presented below.
 
 |Environment | Description |
 | --- | --- |
-| RoomNavigation | Position is obtained from simulation engine.
-Collision is detected with ultrasonic sensors |
-| DynamicRoomNavigation| Position is obtained from simulation engine.
-Collision is detected with ultrasonic sensors.
-Moving robots in environment as dynamic obstacles. |
+| RoomNavigation | Environment with static obstacles like walls. |
+| DynamicRoomNavigation| Environment with dynamic obstacles like randomly moving mobile robots. |
 
 
 The environment can be customized with four parameters:
