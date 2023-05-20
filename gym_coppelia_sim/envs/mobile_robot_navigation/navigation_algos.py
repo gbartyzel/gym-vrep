@@ -41,21 +41,27 @@ class NavigationAlgorithm(abc.ABC):
         """
         return cls.registered_algos[algo_type](**kwargs)
 
-    def __init__(self, robot: SmartBot, dt: float):
+    def __init__(self, dt: float, wheel_radius: float, base_length: float):
         """Initialize class object.
 
         Args:
             robot: An object of mobile robot.
             dt: A delta time of simulation.
         """
-        self._robot = robot
         self._target_position = None
         self._dt = dt
+        self._wheel_radius = wheel_radius
+        self._base_length = base_length
 
         self._pose = np.zeros(3)
 
     @abc.abstractmethod
-    def compute_position(self, goal: np.ndarray) -> Any:
+    def compute_position(
+        self,
+        robot_pose: np.ndarray,
+        goal_pose: np.ndarray,
+        **kwargs,
+    ) -> Any:
         """An abstract method for computing position.
 
         Args:
@@ -77,7 +83,12 @@ class IdealNavigationAlgorithm(NavigationAlgorithm, algo_type="ideal"):
 
     """
 
-    def compute_position(self, goal: np.ndarray) -> np.ndarray:
+    def compute_position(
+        self,
+        robot_pose: np.ndarray,
+        goal_pose: np.ndarray,
+        **kwargs,
+    ) -> np.ndarray:
         """A method that computer polar coordinates of mobile robot.
 
         Args:
@@ -86,16 +97,14 @@ class IdealNavigationAlgorithm(NavigationAlgorithm, algo_type="ideal"):
         Returns:
             polar_coordinates: A polar coordinates of mobile robot.
         """
-        pose = np.round(self._robot.get_2d_pose(), 3)
-        pose[2] = correct_angle(pose[2])
+        robot_pose = np.round(robot_pose, 3)
+        robot_pose[2] = correct_angle(robot_pose[2])
 
-        distance = np.linalg.norm(pose[0:2] - goal)
+        distance = np.linalg.norm(robot_pose[0:2] - goal_pose)
 
-        theta = np.arctan2(goal[1] - pose[1], goal[0] - pose[0])
-
+        theta = np.arctan2(goal_pose[1] - robot_pose[1], goal_pose[0] - robot_pose[0])
         theta = correct_angle(theta)
-
-        heading_angle = correct_angle(theta - pose[2])
+        heading_angle = correct_angle(theta - robot_pose[2])
 
         polar_coordinates = np.round(np.array([distance, heading_angle]), 3)
         return polar_coordinates
@@ -115,18 +124,23 @@ class OdometryNavigationAlgorithm(NavigationAlgorithm, algo_type="odometry"):
 
     """
 
-    def __init__(self, robot: SmartBot, dt: float):
+    def __init__(self, dt: float, wheel_radius: float, base_length: float):
         """A constructor of class.
 
         Args:
             robot: An object of mobile robot.
             dt: A delta time of simulation.
         """
-        super().__init__(robot, dt)
+        super().__init__(dt, wheel_radius, base_length)
 
         self._sum_path = 0.0
 
-    def compute_position(self, goal: np.ndarray) -> np.ndarray:
+    def compute_position(
+        self,
+        robot_pose: np.ndarray,
+        goal_pose: np.ndarray,
+        **kwargs,
+    ) -> np.ndarray:
         """A method that computer polar coordinates of mobile robot.
 
         Args:
@@ -135,7 +149,7 @@ class OdometryNavigationAlgorithm(NavigationAlgorithm, algo_type="odometry"):
         Returns:
             polar_coordinates: A polar coordinates of mobile robot.
         """
-        delta_path, delta_beta = self.compute_delta_motion()
+        delta_path, delta_beta = self._compute_delta_motion(**kwargs)
 
         self._pose += np.array(
             [
@@ -148,9 +162,9 @@ class OdometryNavigationAlgorithm(NavigationAlgorithm, algo_type="odometry"):
         self._pose = np.round(self._pose, 3)
         self._pose[2] = correct_angle(self._pose[2])
 
-        distance = np.linalg.norm(self._pose[0:2] - goal)
+        distance = np.linalg.norm(self._pose[0:2] - goal_pose)
 
-        theta = np.arctan2(goal[1] - self._pose[1], goal[0] - self._pose[0])
+        theta = np.arctan2(goal_pose[1] - self._pose[1], goal_pose[0] - self._pose[0])
         theta = correct_angle(theta)
 
         heading_angle = correct_angle(theta - self._pose[2])
@@ -159,7 +173,9 @@ class OdometryNavigationAlgorithm(NavigationAlgorithm, algo_type="odometry"):
 
         return polar_coordinates
 
-    def compute_delta_motion(self) -> Tuple[NumpyOrFloat, NumpyOrFloat]:
+    def _compute_delta_motion(
+        self, encoder_ticks: np.ndarray, **kwargs
+    ) -> Tuple[NumpyOrFloat, NumpyOrFloat]:
         """A method that compute difference between current traveled path and
         previous path. Also compute difference between current mobile robot
         rotation and previous one.
@@ -168,12 +184,12 @@ class OdometryNavigationAlgorithm(NavigationAlgorithm, algo_type="odometry"):
             delta_path: Delta of traveled path by robot
             delta_beta: Delta of rotation done by robot
         """
-        wheels_paths = self._robot.encoder_ticks * self._robot.wheel_radius
+        wheels_paths = encoder_ticks * self._wheel_radius
 
         delta_path = np.round(np.sum(wheels_paths) / 2, 3)
         self._sum_path += delta_path
 
-        delta_beta = (wheels_paths[1] - wheels_paths[0]) / self._robot.wheel_distance
+        delta_beta = (wheels_paths[1] - wheels_paths[0]) / self._base_length
         delta_beta = np.round(delta_beta, 3)
 
         return float(delta_path), float(delta_beta)
@@ -217,8 +233,8 @@ class GyrodometryNavigationAlgorithm(
         Returns:
             polar_coordinates: A polar coordinates of mobile robot.
         """
-        delta_path, _ = self.compute_delta_motion()
-        delta_beta = self.compute_rotation()
+        delta_path, _ = self._compute_delta_motion()
+        delta_beta = self._compute_rotation()
 
         self._pose += np.array(
             [
@@ -239,7 +255,7 @@ class GyrodometryNavigationAlgorithm(
 
         return np.round(np.array([distance, heading_angle]), 3)
 
-    def compute_rotation(self) -> NumpyOrFloat:
+    def _compute_rotation(self) -> NumpyOrFloat:
         """A method that compute difference between current and previous
         rotation angle of mobile robot. The calculation are based on mobile
         robot angular velocity along z-axis.
