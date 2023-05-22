@@ -136,7 +136,7 @@ class NavigationEnv(gym_coppelia_sim.CoppeliaSimEnv):
         if self._enable_vision:
             state = {
                 "scalars": sclaras,
-                "image": (self._robot.image * 256.0).astype(np.uint8),
+                "image": (self._robot.image * 255.0).astype(np.uint8),
             }
         return state, reward, done, info
 
@@ -168,7 +168,7 @@ class NavigationEnv(gym_coppelia_sim.CoppeliaSimEnv):
         if self._enable_vision:
             return {
                 "scalars": self._get_scalar_observation(),
-                "image": (self._robot.image * 256.0).astype(np.uint8),
+                "image": (self._robot.image * 255.0).astype(np.uint8),
             }
 
         return self._get_scalar_observation()
